@@ -5,12 +5,9 @@ import net.blay09.mods.cookingforblockheads.api.KitchenRecipeHandler;
 import net.blay09.mods.cookingforblockheads.crafting.CraftingContext;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.crafting.Ingredient;
-import net.minecraft.world.item.crafting.RecipeInput;
 import vectorwing.farmersdelight.common.crafting.CuttingBoardRecipe;
 
 import java.util.List;
-import java.util.Optional;
 
 /**
  * Bridges Farmer's Delight {@link CuttingBoardRecipe} with Cooking for Blockheads'
@@ -27,7 +24,7 @@ import java.util.Optional;
  * We return the first (primary) result. All results, including chance-based ones,
  * are still produced by the {@code AutoCutterBlockEntity} processor.
  */
-public class CuttingBoardRecipeHandler implements KitchenRecipeHandler<RecipeInput, CuttingBoardRecipe> {
+public class CuttingBoardRecipeHandler implements KitchenRecipeHandler<CuttingBoardRecipe> {
 
     /**
      * Slot 0 – ingredient to cut.<br>
@@ -40,25 +37,6 @@ public class CuttingBoardRecipeHandler implements KitchenRecipeHandler<RecipeInp
             case 1 -> 5; // tool (displayed only)
             default -> ingredientIndex;
         };
-    }
-
-    /**
-     * Exposes the ingredient. The tool is shown at index 1 as an informational ingredient
-     * so the recipe book can display which tool is required.
-     */
-    @Override
-    public List<Optional<Ingredient>> getIngredients(CuttingBoardRecipe recipe) {
-        return List.of(
-                Optional.of(recipe.getIngredients().get(0)), // item to cut
-                Optional.of(recipe.getTool())                // required tool (display only)
-        );
-    }
-
-    @Override
-    public ItemStack predictResultItem(CuttingBoardRecipe recipe) {
-        // Return the first (highest-probability) result for the recipe-book preview.
-        List<ItemStack> results = recipe.getResults();
-        return results.isEmpty() ? ItemStack.EMPTY : results.get(0);
     }
 
     /**

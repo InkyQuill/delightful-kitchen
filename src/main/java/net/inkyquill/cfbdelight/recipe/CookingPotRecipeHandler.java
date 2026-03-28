@@ -5,13 +5,9 @@ import net.blay09.mods.cookingforblockheads.api.KitchenRecipeHandler;
 import net.blay09.mods.cookingforblockheads.crafting.CraftingContext;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.crafting.Ingredient;
-import net.minecraft.world.item.crafting.RecipeInput;
 import vectorwing.farmersdelight.common.crafting.CookingPotRecipe;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 /**
  * Bridges Farmer's Delight {@link CookingPotRecipe} with Cooking for Blockheads'
@@ -34,7 +30,7 @@ import java.util.Optional;
  * The {@link net.inkyquill.cfbdelight.block.entity.PotStandBlockEntity} processor
  * separates the container token from the ingredient tokens before cooking starts.
  */
-public class CookingPotRecipeHandler implements KitchenRecipeHandler<RecipeInput, CookingPotRecipe> {
+public class CookingPotRecipeHandler implements KitchenRecipeHandler<CookingPotRecipe> {
 
     /**
      * Maps each recipe ingredient (and trailing container) to a slot on CfB's 3×3
@@ -51,31 +47,6 @@ public class CookingPotRecipeHandler implements KitchenRecipeHandler<RecipeInput
         }
         // ingredients fill slots 0-5 (we only use top two rows for ≤ 6 items)
         return ingredientIndex;
-    }
-
-    /**
-     * Returns the full ingredient list, appending the output container as the final
-     * ingredient so CfB can find and track it in the kitchen.
-     */
-    @Override
-    public List<Optional<Ingredient>> getIngredients(CookingPotRecipe recipe) {
-        List<Optional<Ingredient>> result = new ArrayList<>();
-        for (Ingredient ingredient : recipe.getIngredients()) {
-            result.add(Optional.of(ingredient));
-        }
-        // Append the output container (bowl / glass bottle / etc.) if defined
-        ItemStack container = recipe.getOutputContainer();
-        if (!container.isEmpty()) {
-            result.add(Optional.of(Ingredient.of(container)));
-        }
-        return result;
-    }
-
-    @Override
-    public ItemStack predictResultItem(CookingPotRecipe recipe) {
-        // We can't call getResultItem without a RegistryAccess; return the raw output.
-        // CfB uses this only for display, not for actual crafting.
-        return recipe.getResultItem(null);
     }
 
     /**

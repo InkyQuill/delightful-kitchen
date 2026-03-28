@@ -26,8 +26,8 @@ import net.minecraft.world.item.ItemStack;
  */
 public class GrillMenu extends AbstractContainerMenu {
 
-    /** 6 cook times + 6 cook totals. */
-    private static final int DATA_SIZE = 12;
+    /** 6 cook times + 6 cook totals + burnTime + burnTimeTotal. */
+    private static final int DATA_SIZE = 14;
 
     private final Container container;
     private final ContainerData data;
@@ -62,14 +62,17 @@ public class GrillMenu extends AbstractContainerMenu {
             });
         }
 
+        // Fuel slot
+        addSlot(new Slot(container, GrillBlockEntity.SLOT_FUEL, 152, 36));
+
         // Player inventory (y=102, 120, 138) + hotbar (y=160)
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 9; col++) {
-                addSlot(new Slot(playerInventory, col + row * 9 + 9, 8 + col * 18, 102 + row * 18));
+                addSlot(new Slot(playerInventory, col + row * 9 + 9, 8 + col * 18, 114 + row * 18));
             }
         }
         for (int col = 0; col < 9; col++) {
-            addSlot(new Slot(playerInventory, col, 8 + col * 18, 160));
+            addSlot(new Slot(playerInventory, col, 8 + col * 18, 172));
         }
 
         addDataSlots(data);
@@ -91,8 +94,13 @@ public class GrillMenu extends AbstractContainerMenu {
         if (index < containerEnd) {
             if (!moveItemStackTo(stack, invStart, invEnd, true)) return ItemStack.EMPTY;
         } else {
-            // Only allow placing in input slots (0-5)
-            if (!moveItemStackTo(stack, 0, GrillBlockEntity.GRILL_SLOTS, false)) return ItemStack.EMPTY;
+            // Fuel items go to fuel slot first, then input slots
+            if (GrillBlockEntity.SLOT_FUEL < containerEnd
+                    && container.canPlaceItem(GrillBlockEntity.SLOT_FUEL, stack)
+                    && !moveItemStackTo(stack, GrillBlockEntity.SLOT_FUEL, GrillBlockEntity.SLOT_FUEL + 1, false)) {
+                // Fuel slot full or not a fuel item, try input slots
+            }
+            if (!stack.isEmpty() && !moveItemStackTo(stack, 0, GrillBlockEntity.GRILL_SLOTS, false)) return ItemStack.EMPTY;
         }
         if (stack.isEmpty()) slot.set(ItemStack.EMPTY);
         else slot.setChanged();
@@ -116,5 +124,13 @@ public class GrillMenu extends AbstractContainerMenu {
     public float getCookProgress(int slot) {
         int total = getCookTimeTotal(slot);
         return total == 0 ? 0f : (float) getCookTime(slot) / total;
+    }
+
+    // Burn / fuel accessors
+    public int getBurnTime() { return data.get(12); }
+    public int getBurnTotal() { return data.get(13); }
+    public float getBurnProgress() {
+        int total = getBurnTotal();
+        return total == 0 ? 0f : (float) getBurnTime() / total;
     }
 }

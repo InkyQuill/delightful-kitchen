@@ -35,7 +35,9 @@ public class PotStandMenu extends AbstractContainerMenu {
 
     public static final int DATA_COOK_TIME = 0;
     public static final int DATA_COOK_TOTAL = 1;
-    private static final int DATA_SIZE = 2;
+    public static final int DATA_BURN_TIME = 2;
+    public static final int DATA_BURN_TOTAL = 3;
+    private static final int DATA_SIZE = 4;
 
     private final Container container;
     private final ContainerData data;
@@ -84,18 +86,20 @@ public class PotStandMenu extends AbstractContainerMenu {
         addSlot(new Slot(container, PotStandBlockEntity.SLOT_OUTPUT, 116, 54) {
             @Override public boolean mayPlace(ItemStack stack) { return false; }
         });
+        // Fuel slot (y=72, left side)
+        addSlot(new Slot(container, PotStandBlockEntity.SLOT_FUEL, 8, 72));
     }
 
     private void addPlayerSlots(Inventory inv) {
-        // Player inventory rows (y=92, 110, 128)
+        // Player inventory rows (y=96, 114, 132)
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 9; col++) {
-                addSlot(new Slot(inv, col + row * 9 + 9, 8 + col * 18, 92 + row * 18));
+                addSlot(new Slot(inv, col + row * 9 + 9, 8 + col * 18, 96 + row * 18));
             }
         }
-        // Hotbar (y=150)
+        // Hotbar (y=154)
         for (int col = 0; col < 9; col++) {
-            addSlot(new Slot(inv, col, 8 + col * 18, 150));
+            addSlot(new Slot(inv, col, 8 + col * 18, 154));
         }
     }
 
@@ -119,7 +123,13 @@ public class PotStandMenu extends AbstractContainerMenu {
         if (index < containerEnd) {
             if (!moveItemStackTo(stack, invStart, invEnd, true)) return ItemStack.EMPTY;
         } else {
-            if (!moveItemStackTo(stack, 0, containerEnd, false)) return ItemStack.EMPTY;
+            // Fuel items go to fuel slot first
+            if (container.canPlaceItem(PotStandBlockEntity.SLOT_FUEL, stack)) {
+                moveItemStackTo(stack, PotStandBlockEntity.SLOT_FUEL, PotStandBlockEntity.SLOT_FUEL + 1, false);
+            }
+            // Remaining goes to ingredient/container slots
+            if (!stack.isEmpty() && !moveItemStackTo(stack, 0, PotStandBlockEntity.SLOT_OUTPUT, false))
+                return ItemStack.EMPTY;
         }
         if (stack.isEmpty()) slot.set(ItemStack.EMPTY);
         else slot.setChanged();
@@ -148,5 +158,13 @@ public class PotStandMenu extends AbstractContainerMenu {
     public float getCookProgress() {
         int total = getCookTimeTotal();
         return total == 0 ? 0f : (float) getCookTime() / total;
+    }
+
+    // Burn / fuel accessors
+    public int getBurnTime() { return data.get(DATA_BURN_TIME); }
+    public int getBurnTotal() { return data.get(DATA_BURN_TOTAL); }
+    public float getBurnProgress() {
+        int total = getBurnTotal();
+        return total == 0 ? 0f : (float) getBurnTime() / total;
     }
 }

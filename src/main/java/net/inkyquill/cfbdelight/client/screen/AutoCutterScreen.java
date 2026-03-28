@@ -49,5 +49,11 @@ public class AutoCutterScreen extends AbstractContainerScreen<AutoCutterMenu> {
     protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
         graphics.drawString(font, title, titleLabelX, titleLabelY, 0x404040, false);
         graphics.drawString(font, playerInventoryTitle, inventoryLabelX, inventoryLabelY, 0x404040, false);
+
+        int color = 0x636363;
+        // Label above the single input slot (slot at x=26, y=35)
+        graphics.drawString(font, Component.translatable("gui.cfb_delight.input"),  18, 23, color, false);
+        // Label to the right of the 2×2 output grid (grid ends at x=132)
+        graphics.drawString(font, Component.translatable("gui.cfb_delight.output"), 134, 35, color, false);
     }
 }

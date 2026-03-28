@@ -46,6 +46,14 @@ public class GrillScreen extends AbstractContainerScreen<GrillMenu> {
                         256, 256);
             }
         }
+
+        // Fuel fire at right side
+        float burnProgress = menu.getBurnProgress();
+        if (burnProgress > 0f) {
+            int fireHeight = (int) (14 * burnProgress);
+            graphics.blit(TEXTURE, leftPos + 154, topPos + 36 + (14 - fireHeight),
+                    185, 14 - fireHeight, 9, fireHeight, 256, 256);
+        }
     }
 
     @Override
@@ -58,5 +66,10 @@ public class GrillScreen extends AbstractContainerScreen<GrillMenu> {
     protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
         graphics.drawString(font, title, titleLabelX, titleLabelY, 0x404040, false);
         graphics.drawString(font, playerInventoryTitle, inventoryLabelX, inventoryLabelY, 0x404040, false);
+
+        int color = 0x636363;
+        graphics.drawString(font, Component.translatable("gui.cfb_delight.input"),  116, 22, color, false);
+        graphics.drawString(font, Component.translatable("gui.cfb_delight.output"), 116, 58, color, false);
+        graphics.drawString(font, Component.translatable("gui.cfb_delight.fuel"),   152, 25, color, false);
     }
 }

@@ -63,35 +63,35 @@ public class ContainerStorageMenu extends AbstractContainerMenu {
 
         container.startOpen(playerInventory.player);
 
-        // 8 bowl slots (y=18)
+        // 8 bowl slots (y=28)
         for (int i = 0; i < ContainerStorageBlockEntity.BOWL_SLOTS; i++) {
             addSlot(new BowlSlot(container,
                     ContainerStorageBlockEntity.SLOT_BOWL_START + i,
-                    8 + i * 18, 18));
+                    8 + i * 18, 28));
         }
 
-        // 8 bottle slots (y=36)
+        // 8 bottle slots (y=56)
         for (int i = 0; i < ContainerStorageBlockEntity.BOTTLE_SLOTS; i++) {
             addSlot(new BottleSlot(container,
                     ContainerStorageBlockEntity.SLOT_BOTTLE_START + i,
-                    8 + i * 18, 36));
+                    8 + i * 18, 56));
         }
 
-        // 9 general container slots (y=54)
+        // 9 general container slots (y=84)
         for (int i = 0; i < ContainerStorageBlockEntity.GENERAL_SLOTS; i++) {
             addSlot(new Slot(container,
                     ContainerStorageBlockEntity.SLOT_GENERAL_START + i,
-                    8 + i * 18, 54));
+                    8 + i * 18, 84));
         }
 
-        // Player inventory (y=82, 100, 118) + hotbar (y=140)
+        // Player inventory (y=114, 132, 150) + hotbar (y=172)
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 9; col++) {
-                addSlot(new Slot(playerInventory, col + row * 9 + 9, 8 + col * 18, 82 + row * 18));
+                addSlot(new Slot(playerInventory, col + row * 9 + 9, 8 + col * 18, 114 + row * 18));
             }
         }
         for (int col = 0; col < 9; col++) {
-            addSlot(new Slot(playerInventory, col, 8 + col * 18, 140));
+            addSlot(new Slot(playerInventory, col, 8 + col * 18, 172));
         }
     }
 

@@ -1,19 +1,18 @@
 package net.inkyquill.cfbdelight.compat;
 
-import net.blay09.mods.balm.Balm;
 import net.blay09.mods.cookingforblockheads.api.CookingForBlockheadsAPI;
-import net.blay09.mods.cookingforblockheads.capability.KitchenItemProcessorHolder;
-import net.blay09.mods.cookingforblockheads.capability.ModCapabilities;
+import net.blay09.mods.cookingforblockheads.api.KitchenItemProcessor;
 import net.inkyquill.cfbdelight.CfBDelight;
 import net.inkyquill.cfbdelight.block.entity.ModBlockEntities;
 import net.inkyquill.cfbdelight.recipe.CookingPotRecipeHandler;
 import net.inkyquill.cfbdelight.recipe.CuttingBoardRecipeHandler;
 import net.inkyquill.cfbdelight.recipe.GrillRecipeHandler;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.crafting.CampfireCookingRecipe;
+import net.neoforged.neoforge.capabilities.BlockCapability;
+import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 import vectorwing.farmersdelight.common.crafting.CookingPotRecipe;
 import vectorwing.farmersdelight.common.crafting.CuttingBoardRecipe;
-
-import java.util.Set;
 
 /**
  * Registers all cross-mod integrations between Cooking for Blockheads and Farmer's Delight.
@@ -22,80 +21,56 @@ import java.util.Set;
  * <ol>
  *   <li><b>KitchenRecipeHandlers</b> – teach CfB's recipe book how to find ingredients
  *       for {@code CookingPotRecipe}, {@code CuttingBoardRecipe}, and
- *       {@code CampfireCookingRecipe} (grill), and how to dispatch those recipes
- *       to the appropriate processor blocks.</li>
+ *       {@code CampfireCookingRecipe} (grill).</li>
  *   <li><b>KitchenItemProcessor capabilities</b> – register our three block entities
- *       with Balm so CfB's kitchen discovery (KitchenImpl) can pick them up when
- *       scanning adjacent blocks.</li>
- *   <li><b>KitchenItemProvider capabilities</b> – register our blocks as item
- *       providers so their output slots appear as ingredient sources in CfB's
- *       kitchen inventory.</li>
+ *       with NeoForge so CfB's kitchen discovery can pick them up when scanning
+ *       adjacent blocks.</li>
  * </ol>
  *
- * <h3>Bowls, bottles, and other FD holders</h3>
- * Farmer's Delight meal recipes typically require a {@code minecraft:bowl} or
- * {@code minecraft:glass_bottle} as an output container. CfB's recipe book
- * already searches the player's inventory and any {@code KitchenItemProvider}
- * blocks for these items. No extra work is needed here as long as the player
- * has bowls / bottles somewhere reachable in the kitchen.
- *
- * <p>Called via {@link FMLCommonSetupEvent#enqueueWork} from
- * {@link net.inkyquill.cfbdelight.CfBDelight#commonSetup}, which guarantees
- * that CfB (and Balm) have been fully initialised before we touch their APIs.
+ * <p>Recipe handler registration is called from {@link net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent#enqueueWork}.
+ * Capability registration is done in {@link RegisterCapabilitiesEvent}.
  */
 public class FarmersDelightCompat {
 
-    public static void init() {
-        registerRecipeHandlers();
-        registerCapabilities();
-        CfBDelight.LOGGER.info("[CfB-Delight] Farmer's Delight compatibility loaded.");
-    }
+    /**
+     * The KitchenItemProcessor capability, using the same ResourceLocation that
+     * CfB defines internally. NeoForge's BlockCapability is a singleton keyed by
+     * name, so this returns the same instance as CfB's private field.
+     */
+    public static final BlockCapability<KitchenItemProcessor, Void> KITCHEN_ITEM_PROCESSOR =
+            BlockCapability.createVoid(
+                    ResourceLocation.fromNamespaceAndPath("cookingforblockheads", "kitchen_item_processor"),
+                    KitchenItemProcessor.class);
 
-    // -------------------------------------------------------------------------
-    // Recipe Handlers
-    // -------------------------------------------------------------------------
-
-    private static void registerRecipeHandlers() {
-        // CookingPotRecipe → PotStandBlockEntity
+    /** Called during FMLCommonSetupEvent to register recipe handlers with CfB's recipe book. */
+    public static void registerRecipeHandlers() {
         CookingForBlockheadsAPI.registerKitchenRecipeHandler(
                 CookingPotRecipe.class,
                 new CookingPotRecipeHandler());
 
-        // CuttingBoardRecipe → AutoCutterBlockEntity
         CookingForBlockheadsAPI.registerKitchenRecipeHandler(
                 CuttingBoardRecipe.class,
                 new CuttingBoardRecipeHandler());
 
-        // CampfireCookingRecipe → GrillBlockEntity
-        // Note: this overrides CfB's built-in campfire handler if one exists.
-        // If CfB has no built-in campfire handler, this adds a new capability.
         CookingForBlockheadsAPI.registerKitchenRecipeHandler(
                 CampfireCookingRecipe.class,
                 new GrillRecipeHandler());
+
+        CfBDelight.LOGGER.info("[CfB-Delight] Farmer's Delight recipe handlers registered.");
     }
 
-    // -------------------------------------------------------------------------
-    // Balm Capabilities
-    // -------------------------------------------------------------------------
+    /** Called from {@link RegisterCapabilitiesEvent} to expose our block entities as KitchenItemProcessors. */
+    public static void registerCapabilities(RegisterCapabilitiesEvent event) {
+        event.registerBlockEntity(KITCHEN_ITEM_PROCESSOR,
+                ModBlockEntities.POT_STAND.get(),
+                (be, ctx) -> be.getKitchenItemProcessor());
 
-    private static void registerCapabilities() {
-        // Expose KitchenItemProcessor for all three compat blocks.
-        // Balm will wire these up to NeoForge's capability system automatically.
-        Balm.capabilities().registerProvider(
-                net.inkyquill.cfbdelight.CfBDelight.id("kitchen_item_processor"),
-                ModCapabilities.KITCHEN_ITEM_PROCESSOR,
-                (blockEntity, context) ->
-                        blockEntity instanceof KitchenItemProcessorHolder holder
-                                ? holder.getKitchenItemProcessor()
-                                : null,
-                () -> Set.of(
-                        ModBlockEntities.POT_STAND.get(),
-                        ModBlockEntities.AUTO_CUTTER.get(),
-                        ModBlockEntities.GRILL.get()
-                ));
+        event.registerBlockEntity(KITCHEN_ITEM_PROCESSOR,
+                ModBlockEntities.AUTO_CUTTER.get(),
+                (be, ctx) -> be.getKitchenItemProcessor());
 
-        // NOTE: ContainerStorageBlockEntity is a Container and is tagged with
-        // cookingforblockheads:kitchen_item_providers, so CfB's tag-based fallback
-        // provider wraps it automatically – no explicit registration needed here.
+        event.registerBlockEntity(KITCHEN_ITEM_PROCESSOR,
+                ModBlockEntities.GRILL.get(),
+                (be, ctx) -> be.getKitchenItemProcessor());
     }
 }

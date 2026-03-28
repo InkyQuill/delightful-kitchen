@@ -43,17 +43,13 @@ public class ContainerStorageScreen extends AbstractContainerScreen<ContainerSto
 
     @Override
     protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
-        // Block title
         graphics.drawString(font, title, titleLabelX, titleLabelY, 0x404040, false);
 
-        // Section labels – drawn to the right of the 8-slot rows.
-        // x=152 is just past the 8th slot (8 + 8*18 = 152). Scale to 6px of right margin.
-        // TODO: Adjust these coordinates to match the final texture layout.
-        graphics.drawString(font, LABEL_BOWLS,   152, 20, 0x707070, false);
-        graphics.drawString(font, LABEL_BOTTLES, 152, 38, 0x707070, false);
-        graphics.drawString(font, LABEL_OTHER,   152, 56, 0x707070, false);
+        int color = 0x636363;
+        graphics.drawString(font, LABEL_BOWLS,   8, 18, color, false);
+        graphics.drawString(font, LABEL_BOTTLES, 8, 44, color, false);
+        graphics.drawString(font, LABEL_OTHER,   8, 74, color, false);
 
-        // Player inventory label
         graphics.drawString(font, playerInventoryTitle, inventoryLabelX, inventoryLabelY, 0x404040, false);
     }
 
