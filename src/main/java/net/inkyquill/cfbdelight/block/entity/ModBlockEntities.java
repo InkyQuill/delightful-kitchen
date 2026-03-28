@@ -27,4 +27,12 @@ public class ModBlockEntities {
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<ContainerStorageBlockEntity>> CONTAINER_STORAGE =
             BLOCK_ENTITIES.register("container_storage", () ->
                     BlockEntityType.Builder.of(ContainerStorageBlockEntity::new, ModBlocks.CONTAINER_STORAGE.get()).build(null));
+
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<CabinetOfHoldingBlockEntity>> CABINET_OF_HOLDING =
+            BLOCK_ENTITIES.register("cabinet_of_holding", () ->
+                    BlockEntityType.Builder.of(CabinetOfHoldingBlockEntity::new, ModBlocks.CABINET_OF_HOLDING.get()).build(null));
+
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<FuelProviderBlockEntity>> FUEL_PROVIDER =
+            BLOCK_ENTITIES.register("fuel_provider", () ->
+                    BlockEntityType.Builder.of(FuelProviderBlockEntity::new, ModBlocks.FUEL_PROVIDER.get()).build(null));
 }

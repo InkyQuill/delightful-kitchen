@@ -47,4 +47,20 @@ public class ModBlocks {
                             .mapColor(MapColor.WOOD)
                             .strength(1.5f, 3.0f)
                             .sound(SoundType.WOOD)));
+
+    /** Large 54-slot kitchen storage that doubles as a KitchenItemProvider. */
+    public static final DeferredBlock<CabinetOfHoldingBlock> CABINET_OF_HOLDING =
+            BLOCKS.register("cabinet_of_holding",
+                    () -> new CabinetOfHoldingBlock(BlockBehaviour.Properties.of()
+                            .mapColor(MapColor.WOOD)
+                            .strength(3.0f, 6.0f)
+                            .sound(SoundType.WOOD)));
+
+    /** Stores fuel and pushes it to adjacent Grill and PotStand blocks. */
+    public static final DeferredBlock<FuelProviderBlock> FUEL_PROVIDER =
+            BLOCKS.register("fuel_provider",
+                    () -> new FuelProviderBlock(BlockBehaviour.Properties.of()
+                            .mapColor(MapColor.STONE)
+                            .strength(2.5f, 6.0f)
+                            .sound(SoundType.STONE)));
 }

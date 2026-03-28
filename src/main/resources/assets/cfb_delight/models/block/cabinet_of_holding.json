@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/orientable",
+  "textures": {
+    "top":   "cfb_delight:block/cabinet_of_holding_top",
+    "front": "cfb_delight:block/cabinet_of_holding_front",
+    "side":  "cfb_delight:block/cabinet_of_holding_side"
+  }
+}

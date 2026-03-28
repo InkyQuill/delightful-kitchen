@@ -27,4 +27,12 @@ public class ModMenuTypes {
     public static final DeferredHolder<MenuType<?>, MenuType<ContainerStorageMenu>> CONTAINER_STORAGE =
             MENUS.register("container_storage", () ->
                     IMenuTypeExtension.create(ContainerStorageMenu::new));
+
+    public static final DeferredHolder<MenuType<?>, MenuType<CabinetOfHoldingMenu>> CABINET_OF_HOLDING =
+            MENUS.register("cabinet_of_holding", () ->
+                    IMenuTypeExtension.create(CabinetOfHoldingMenu::new));
+
+    public static final DeferredHolder<MenuType<?>, MenuType<FuelProviderMenu>> FUEL_PROVIDER =
+            MENUS.register("fuel_provider", () ->
+                    IMenuTypeExtension.create(FuelProviderMenu::new));
 }

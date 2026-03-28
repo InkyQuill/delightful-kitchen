@@ -1,7 +1,9 @@
 package net.inkyquill.cfbdelight.client;
 
 import net.inkyquill.cfbdelight.client.screen.AutoCutterScreen;
+import net.inkyquill.cfbdelight.client.screen.CabinetOfHoldingScreen;
 import net.inkyquill.cfbdelight.client.screen.ContainerStorageScreen;
+import net.inkyquill.cfbdelight.client.screen.FuelProviderScreen;
 import net.inkyquill.cfbdelight.client.screen.GrillScreen;
 import net.inkyquill.cfbdelight.client.screen.PotStandScreen;
 import net.inkyquill.cfbdelight.menu.ModMenuTypes;
@@ -21,5 +23,7 @@ public class CfBDelightClient {
         event.register(ModMenuTypes.AUTO_CUTTER.get(),        AutoCutterScreen::new);
         event.register(ModMenuTypes.GRILL.get(),              GrillScreen::new);
         event.register(ModMenuTypes.CONTAINER_STORAGE.get(),  ContainerStorageScreen::new);
+        event.register(ModMenuTypes.CABINET_OF_HOLDING.get(), CabinetOfHoldingScreen::new);
+        event.register(ModMenuTypes.FUEL_PROVIDER.get(),    FuelProviderScreen::new);
     }
 }

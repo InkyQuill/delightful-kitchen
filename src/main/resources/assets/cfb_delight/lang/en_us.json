@@ -9,9 +9,24 @@
   "container.cfb_delight.grill":             "Grill",
   "container.cfb_delight.container_storage": "Container Storage",
 
+  "block.cfb_delight.cabinet_of_holding": "Cabinet of Holding",
+  "container.cfb_delight.cabinet_of_holding": "Cabinet of Holding",
+
+  "block.cfb_delight.fuel_provider": "Fuel Provider",
+  "container.cfb_delight.fuel_provider": "Fuel Provider",
+
   "gui.cfb_delight.bowls":   "Bowls",
   "gui.cfb_delight.bottles": "Bottles",
   "gui.cfb_delight.other":   "Other",
 
-  "itemGroup.cfb_delight": "CfB-Delight"
+  "gui.cfb_delight.input": "Input",
+  "gui.cfb_delight.output": "Output",
+  "gui.cfb_delight.fuel": "Fuel",
+  "gui.cfb_delight.container": "Container",
+  "gui.cfb_delight.ingredients": "Ingredients",
+
+  "itemGroup.cfb_delight": "CfB-Delight",
+
+  "category.cfb_delight.cooking_pot": "Cooking Pot",
+  "category.cfb_delight.cutting_board": "Cutting Board"
 }
