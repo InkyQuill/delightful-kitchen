@@ -3,9 +3,9 @@ package net.inkyquill.cfbdelight.block.entity;
 import net.blay09.mods.cookingforblockheads.api.IngredientToken;
 import net.blay09.mods.cookingforblockheads.api.KitchenItemProcessor;
 import net.blay09.mods.cookingforblockheads.api.KitchenOperation;
-import net.blay09.mods.cookingforblockheads.capability.KitchenItemProcessorHolder;
 import net.inkyquill.cfbdelight.block.GrillBlock;
 import net.inkyquill.cfbdelight.menu.GrillMenu;
+import net.inkyquill.cfbdelight.util.InventoryHelper;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
@@ -23,6 +23,7 @@ import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.CampfireCookingRecipe;
 import net.minecraft.world.item.crafting.Recipe;
+import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -37,18 +38,19 @@ import java.util.List;
  * <p>
  * Slot layout:
  * <ul>
- *   <li>0–5  : input (cooking) slots</li>
- *   <li>6–11 : output slots (one per input slot)</li>
+ *   <li>0-5  : input (cooking) slots</li>
+ *   <li>6-11 : output slots (one per input slot)</li>
  * </ul>
- * Uses campfire cooking recipes – the same type as Farmer's Delight's Stove.
+ * Uses campfire cooking recipes - the same type as Farmer's Delight's Stove.
  */
 public class GrillBlockEntity extends BlockEntity
-        implements Container, KitchenItemProcessorHolder, MenuProvider, Nameable {
+        implements Container, MenuProvider, Nameable {
 
     public static final int GRILL_SLOTS      = 6;
-    public static final int SLOT_COUNT       = GRILL_SLOTS * 2;
     public static final int SLOT_INPUT_START  = 0;
     public static final int SLOT_OUTPUT_START = GRILL_SLOTS;
+    public static final int SLOT_FUEL         = GRILL_SLOTS * 2; // = 12
+    public static final int SLOT_COUNT        = GRILL_SLOTS * 2 + 1; // = 13
 
     public static final int DEFAULT_COOK_TIME = 600;
 
@@ -56,13 +58,26 @@ public class GrillBlockEntity extends BlockEntity
     private final int[]       cookTimes    = new int[GRILL_SLOTS];
     private final int[]       cookTotals   = new int[GRILL_SLOTS];
     private final ItemStack[] pending      = new ItemStack[GRILL_SLOTS];
+    private int burnTime = 0;
+    private int burnTimeTotal = 200;
     @Nullable private Component customName = null;
 
-    // Sync 6 cook times + 6 totals to the menu
+    // Sync 6 cook times + 6 totals + burnTime + burnTimeTotal to the menu
     private final ContainerData data = new ContainerData() {
-        @Override public int get(int i) { return i < GRILL_SLOTS ? cookTimes[i] : cookTotals[i - GRILL_SLOTS]; }
-        @Override public void set(int i, int v) { if (i < GRILL_SLOTS) cookTimes[i] = v; else cookTotals[i - GRILL_SLOTS] = v; }
-        @Override public int getCount() { return GRILL_SLOTS * 2; }
+        @Override public int get(int i) {
+            if (i < GRILL_SLOTS) return cookTimes[i];
+            if (i < GRILL_SLOTS * 2) return cookTotals[i - GRILL_SLOTS];
+            if (i == 12) return burnTime;
+            if (i == 13) return burnTimeTotal;
+            return 0;
+        }
+        @Override public void set(int i, int v) {
+            if (i < GRILL_SLOTS) cookTimes[i] = v;
+            else if (i < GRILL_SLOTS * 2) cookTotals[i - GRILL_SLOTS] = v;
+            else if (i == 12) burnTime = v;
+            else if (i == 13) burnTimeTotal = v;
+        }
+        @Override public int getCount() { return 14; }
     };
 
     private final KitchenItemProcessor processor = new KitchenItemProcessor() {
@@ -73,8 +88,9 @@ public class GrillBlockEntity extends BlockEntity
 
         @Override
         public KitchenOperation processRecipe(Recipe<?> recipe, List<IngredientToken> ingredientTokens) {
-            if (!(recipe instanceof CampfireCookingRecipe campfire)) return KitchenOperation.EMPTY;
+            if (!(recipe instanceof CampfireCookingRecipe)) return KitchenOperation.EMPTY;
 
+            // Find an available input slot
             int slot = -1;
             for (int i = 0; i < GRILL_SLOTS; i++) {
                 if (items.get(SLOT_INPUT_START + i).isEmpty() && pending[i] == null) { slot = i; break; }
@@ -85,15 +101,8 @@ public class GrillBlockEntity extends BlockEntity
             ItemStack consumed = ingredientTokens.get(0).consume();
             if (consumed.isEmpty()) return KitchenOperation.EMPTY;
 
+            // Place the item in the input slot; autonomous tick will start cooking
             items.set(SLOT_INPUT_START + slot, consumed);
-            if (level != null) pending[slot] = campfire.getResultItem(level.registryAccess()).copy();
-            cookTimes[slot]  = 0;
-            cookTotals[slot] = campfire.getCookingTime();
-
-            BlockState state = level != null ? level.getBlockState(worldPosition) : null;
-            if (state != null && !state.getValue(GrillBlock.LIT))
-                level.setBlock(worldPosition, state.setValue(GrillBlock.LIT, true), 3);
-
             setChanged();
             return KitchenOperation.EMPTY;
         }
@@ -109,22 +118,76 @@ public class GrillBlockEntity extends BlockEntity
     // ------------------------------------------------------------------
 
     public static void serverTick(Level level, BlockPos pos, BlockState state, GrillBlockEntity be) {
-        if (!state.getValue(GrillBlock.LIT)) return;
-
-        boolean anyActive = false;
+        // Autonomous: try to start cooking items in input slots that aren't active yet
         for (int i = 0; i < GRILL_SLOTS; i++) {
-            if (be.pending[i] == null) continue;
-            anyActive = true;
-            be.cookTimes[i]++;
-            if (be.cookTimes[i] >= be.cookTotals[i]) be.finishSlot(i);
+            if (be.pending[i] == null && !be.items.get(SLOT_INPUT_START + i).isEmpty()) {
+                be.tryStartCooking(level, pos, state, i);
+            }
         }
 
-        if (!anyActive) level.setBlock(pos, state.setValue(GrillBlock.LIT, false), 3);
+        // Process pending slots using fuel
+        boolean anyPending = false;
+        for (int i = 0; i < GRILL_SLOTS; i++) {
+            if (be.pending[i] == null) continue;
+            anyPending = true;
+
+            if (be.burnTime == 0) be.refuel();
+            if (be.burnTime > 0) {
+                be.burnTime--;
+                be.cookTimes[i]++;
+                if (be.cookTimes[i] >= be.cookTotals[i]) be.finishSlot(level, pos, i);
+            }
+        }
+
+        // Update LIT blockstate
+        boolean shouldBeLit = be.burnTime > 0 && anyPending;
+        if (state.getValue(GrillBlock.LIT) != shouldBeLit) {
+            level.setBlock(pos, state.setValue(GrillBlock.LIT, shouldBeLit), 3);
+        }
+
         be.setChanged();
     }
 
-    private void finishSlot(int i) {
+    private void tryStartCooking(Level level, BlockPos pos, BlockState state, int slot) {
+        ItemStack input = items.get(SLOT_INPUT_START + slot);
+        if (input.isEmpty()) return;
+
+        List<RecipeHolder<CampfireCookingRecipe>> recipes = level.getRecipeManager()
+                .getAllRecipesFor(RecipeType.CAMPFIRE_COOKING);
+        for (RecipeHolder<CampfireCookingRecipe> holder : recipes) {
+            CampfireCookingRecipe recipe = holder.value();
+            if (recipe.getIngredients().isEmpty()) continue;
+            if (recipe.getIngredients().get(0).test(input)) {
+                input.shrink(1);
+                if (input.isEmpty()) items.set(SLOT_INPUT_START + slot, ItemStack.EMPTY);
+
+                pending[slot] = recipe.getResultItem(level.registryAccess()).copy();
+                cookTimes[slot] = 0;
+                cookTotals[slot] = recipe.getCookingTime();
+
+                if (!state.getValue(GrillBlock.LIT)) {
+                    level.setBlock(pos, state.setValue(GrillBlock.LIT, true), 3);
+                }
+                setChanged();
+                return;
+            }
+        }
+    }
+
+    private void finishSlot(Level level, BlockPos pos, int i) {
         if (pending[i] == null) return;
+
+        // Try pushing to kitchen network first
+        ItemStack result = pending[i];
+        if (InventoryHelper.pushToKitchen(level, pos, result)) {
+            // Fully pushed
+            items.set(SLOT_INPUT_START + i, ItemStack.EMPTY);
+            pending[i] = null;
+            cookTimes[i] = 0;
+            return;
+        }
+
+        // Fall back to internal output slot
         int outIdx = SLOT_OUTPUT_START + i;
         ItemStack existing = items.get(outIdx);
         if (existing.isEmpty()) {
@@ -138,6 +201,25 @@ public class GrillBlockEntity extends BlockEntity
         items.set(SLOT_INPUT_START + i, ItemStack.EMPTY);
         pending[i] = null;
         cookTimes[i] = 0;
+    }
+
+    private void refuel() {
+        ItemStack fuel = items.get(SLOT_FUEL);
+        if (fuel.isEmpty()) return;
+        int bt = getBurnTime(fuel);
+        if (bt <= 0) return;
+        burnTimeTotal = bt;
+        burnTime = bt;
+        fuel.shrink(1);
+        if (fuel.isEmpty()) items.set(SLOT_FUEL, ItemStack.EMPTY);
+        setChanged();
+    }
+
+    private static int getBurnTime(ItemStack stack) {
+        if (stack.isEmpty()) return 0;
+        var fuel = stack.getItemHolder().getData(
+                net.neoforged.neoforge.registries.datamaps.builtin.NeoForgeDataMaps.FURNACE_FUELS);
+        return fuel != null ? fuel.burnTime() : 0;
     }
 
     // ------------------------------------------------------------------
@@ -162,6 +244,14 @@ public class GrillBlockEntity extends BlockEntity
     public void setItem(int slot, ItemStack stack) { items.set(slot, stack); setChanged(); }
 
     @Override
+    public boolean canPlaceItem(int slot, ItemStack stack) {
+        if (slot >= SLOT_INPUT_START && slot < SLOT_OUTPUT_START) return true; // input slots
+        if (slot >= SLOT_OUTPUT_START && slot < SLOT_FUEL) return false; // output slots
+        if (slot == SLOT_FUEL) return getBurnTime(stack) > 0; // fuel slot
+        return false;
+    }
+
+    @Override
     public boolean stillValid(Player player) {
         return level != null
                 && level.getBlockEntity(worldPosition) == this
@@ -176,7 +266,7 @@ public class GrillBlockEntity extends BlockEntity
     // KitchenItemProcessorHolder
     // ------------------------------------------------------------------
 
-    @Override public KitchenItemProcessor getKitchenItemProcessor() { return processor; }
+    public KitchenItemProcessor getKitchenItemProcessor() { return processor; }
 
     // ------------------------------------------------------------------
     // MenuProvider / Nameable
@@ -225,6 +315,8 @@ public class GrillBlockEntity extends BlockEntity
         ContainerHelper.saveAllItems(tag, items, registries);
         tag.putIntArray("CookTimes",  cookTimes);
         tag.putIntArray("CookTotals", cookTotals);
+        tag.putInt("BurnTime", burnTime);
+        tag.putInt("BurnTimeTotal", burnTimeTotal);
         for (int i = 0; i < GRILL_SLOTS; i++) {
             if (pending[i] != null && !pending[i].isEmpty())
                 tag.put("Pending" + i, pending[i].save(registries));
@@ -240,6 +332,8 @@ public class GrillBlockEntity extends BlockEntity
         int[] ct = tag.getIntArray("CookTimes"),  tot = tag.getIntArray("CookTotals");
         for (int i = 0; i < GRILL_SLOTS && i < ct.length;  i++) cookTimes[i]  = ct[i];
         for (int i = 0; i < GRILL_SLOTS && i < tot.length; i++) cookTotals[i] = tot[i];
+        burnTime = tag.getInt("BurnTime");
+        burnTimeTotal = tag.getInt("BurnTimeTotal");
         for (int i = 0; i < GRILL_SLOTS; i++) {
             if (tag.contains("Pending" + i))
                 pending[i] = ItemStack.parse(registries, tag.getCompound("Pending" + i)).orElse(null);

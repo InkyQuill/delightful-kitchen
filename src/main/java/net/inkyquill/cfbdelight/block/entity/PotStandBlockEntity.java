@@ -1,17 +1,20 @@
 package net.inkyquill.cfbdelight.block.entity;
 
+import net.blay09.mods.cookingforblockheads.api.CacheHint;
+import net.blay09.mods.cookingforblockheads.api.CookingForBlockheadsAPI;
 import net.blay09.mods.cookingforblockheads.api.IngredientToken;
+import net.blay09.mods.cookingforblockheads.api.Kitchen;
 import net.blay09.mods.cookingforblockheads.api.KitchenItemProcessor;
+import net.blay09.mods.cookingforblockheads.api.KitchenItemProvider;
 import net.blay09.mods.cookingforblockheads.api.KitchenOperation;
-import net.blay09.mods.cookingforblockheads.capability.KitchenItemProcessorHolder;
 import net.inkyquill.cfbdelight.block.PotStandBlock;
 import net.inkyquill.cfbdelight.menu.PotStandMenu;
+import net.inkyquill.cfbdelight.util.InventoryHelper;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.tags.BlockTags;
 import net.minecraft.world.Container;
 import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.MenuProvider;
@@ -22,14 +25,16 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
+import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import org.jetbrains.annotations.Nullable;
+import vectorwing.farmersdelight.common.crafting.CookingPotRecipe;
 import vectorwing.farmersdelight.common.registry.ModRecipeTypes;
 
 import java.util.List;
@@ -39,23 +44,26 @@ import java.util.List;
  * <p>
  * Slot layout:
  * <ul>
- *   <li>0–5 : ingredient inputs</li>
+ *   <li>0-5 : ingredient inputs</li>
  *   <li>6   : container slot (bowl / bottle)</li>
  *   <li>7   : output slot (cooked meal)</li>
  * </ul>
  */
 public class PotStandBlockEntity extends BlockEntity
-        implements Container, KitchenItemProcessorHolder, MenuProvider, Nameable {
+        implements Container, MenuProvider, Nameable {
 
-    public static final int SLOT_COUNT     = 8;
     public static final int INPUT_SLOTS    = 6;
     public static final int SLOT_CONTAINER = 6;
     public static final int SLOT_OUTPUT    = 7;
+    public static final int SLOT_FUEL      = 8;
+    public static final int SLOT_COUNT     = 9;
     public static final int DEFAULT_COOK_TIME = 200;
 
     private final NonNullList<ItemStack> items = NonNullList.withSize(SLOT_COUNT, ItemStack.EMPTY);
     private int cookTime      = 0;
     private int cookTimeTotal = DEFAULT_COOK_TIME;
+    private int burnTime      = 0;
+    private int burnTimeTotal = 200;
     @Nullable private ItemStack pendingOutput = null;
     @Nullable private Component customName    = null;
 
@@ -65,6 +73,8 @@ public class PotStandBlockEntity extends BlockEntity
             return switch (index) {
                 case 0 -> cookTime;
                 case 1 -> cookTimeTotal;
+                case 2 -> burnTime;
+                case 3 -> burnTimeTotal;
                 default -> 0;
             };
         }
@@ -72,9 +82,11 @@ public class PotStandBlockEntity extends BlockEntity
             switch (index) {
                 case 0 -> cookTime      = value;
                 case 1 -> cookTimeTotal = value;
+                case 2 -> burnTime      = value;
+                case 3 -> burnTimeTotal = value;
             }
         }
-        @Override public int getCount() { return 2; }
+        @Override public int getCount() { return 4; }
     };
 
     // KitchenItemProcessor exposed to CfB
@@ -86,26 +98,23 @@ public class PotStandBlockEntity extends BlockEntity
 
         @Override
         public KitchenOperation processRecipe(Recipe<?> recipe, List<IngredientToken> ingredientTokens) {
+            if (!(recipe instanceof CookingPotRecipe cpRecipe)) return KitchenOperation.EMPTY;
             if (!items.get(SLOT_OUTPUT).isEmpty()) return KitchenOperation.EMPTY;
+            if (pendingOutput != null) return KitchenOperation.EMPTY;
 
+            int ingredientCount = cpRecipe.getIngredients().size();
             int slot = 0;
-            for (IngredientToken token : ingredientTokens) {
-                ItemStack consumed = token.consume();
-                if (!consumed.isEmpty() && slot < SLOT_COUNT) items.set(slot++, consumed);
+            for (int i = 0; i < ingredientTokens.size(); i++) {
+                ItemStack consumed = ingredientTokens.get(i).consume();
+                if (consumed.isEmpty()) continue;
+                if (i < ingredientCount) {
+                    if (slot < INPUT_SLOTS) items.set(slot++, consumed);
+                } else {
+                    items.set(SLOT_CONTAINER, consumed);
+                }
             }
-            if (level != null) pendingOutput = recipe.getResultItem(level.registryAccess()).copy();
-            cookTimeTotal = getCookTimeFromRecipe(recipe);
-            cookTime = 0;
             setChanged();
             return KitchenOperation.EMPTY;
-        }
-
-        private int getCookTimeFromRecipe(Recipe<?> recipe) {
-            try {
-                return (int) recipe.getClass().getMethod("getCookTime").invoke(recipe);
-            } catch (Exception e) {
-                return DEFAULT_COOK_TIME;
-            }
         }
     };
 
@@ -118,27 +127,162 @@ public class PotStandBlockEntity extends BlockEntity
     // ------------------------------------------------------------------
 
     public static void serverTick(Level level, BlockPos pos, BlockState state, PotStandBlockEntity be) {
-        if (be.pendingOutput == null) return;
-        if (!be.hasHeatSource(level, pos)) return;
-
-        be.cookTime++;
-        if (be.cookTime >= be.cookTimeTotal) be.finishCooking(level, state);
-        be.setChanged();
+        if (be.pendingOutput != null) {
+            if (be.burnTime == 0) be.refuel();
+            if (be.burnTime > 0) {
+                be.burnTime--;
+                be.cookTime++;
+                if (be.cookTime >= be.cookTimeTotal) be.finishCooking(level, pos, state);
+                be.setChanged();
+            }
+        } else {
+            // Autonomous: try to find a recipe for the current inputs
+            be.tryStartCooking(level, pos, state);
+        }
     }
 
-    private boolean hasHeatSource(Level level, BlockPos pos) {
-        var below = level.getBlockState(pos.below());
-        return below.is(BlockTags.CAMPFIRES)
-                || below.is(BlockTags.FIRE)
-                || below.getBlock() == Blocks.LAVA;
+    private void refuel() {
+        ItemStack fuel = items.get(SLOT_FUEL);
+        if (fuel.isEmpty()) return;
+        int bt = getBurnTime(fuel);
+        if (bt <= 0) return;
+        burnTimeTotal = bt;
+        burnTime = bt;
+        fuel.shrink(1);
+        if (fuel.isEmpty()) items.set(SLOT_FUEL, ItemStack.EMPTY);
+        setChanged();
     }
 
-    private void finishCooking(Level level, BlockState state) {
-        if (pendingOutput != null) items.set(SLOT_OUTPUT, pendingOutput);
+    private static int getBurnTime(ItemStack stack) {
+        if (stack.isEmpty()) return 0;
+        var fuel = stack.getItemHolder().getData(
+                net.neoforged.neoforge.registries.datamaps.builtin.NeoForgeDataMaps.FURNACE_FUELS);
+        return fuel != null ? fuel.burnTime() : 0;
+    }
+
+    private void tryStartCooking(Level level, BlockPos pos, BlockState state) {
+        if (pendingOutput != null) return;
+        if (!items.get(SLOT_OUTPUT).isEmpty()) return;
+
+        // Check if any input slot has items
+        boolean hasInput = false;
+        for (int i = 0; i < INPUT_SLOTS; i++) {
+            if (!items.get(i).isEmpty()) { hasInput = true; break; }
+        }
+        if (!hasInput) return;
+
+        List<RecipeHolder<CookingPotRecipe>> recipes = level.getRecipeManager()
+                .getAllRecipesFor(ModRecipeTypes.COOKING.get());
+        for (RecipeHolder<CookingPotRecipe> holder : recipes) {
+            CookingPotRecipe recipe = holder.value();
+            // If container needed and slot empty, try to pull from adjacent storage
+            ItemStack containerRequired = recipe.getOutputContainer();
+            if (!containerRequired.isEmpty() && items.get(SLOT_CONTAINER).isEmpty()) {
+                tryPullContainer(level, containerRequired);
+            }
+            if (matchesRecipe(recipe)) {
+                consumeForRecipe(recipe);
+                pendingOutput = recipe.getResultItem(level.registryAccess()).copy();
+                cookTimeTotal = recipe.getCookTime();
+                cookTime = 0;
+                level.setBlock(pos, state.setValue(PotStandBlock.ACTIVE, true), 3);
+                setChanged();
+                return;
+            }
+        }
+    }
+
+    /**
+     * Searches the connected CfB kitchen network for the required container item and
+     * pulls one from the first provider that has it.
+     */
+    private boolean tryPullContainer(Level level, ItemStack required) {
+        Ingredient ingredient = Ingredient.of(required.getItem());
+        Kitchen kitchen = CookingForBlockheadsAPI.createKitchen(level, worldPosition);
+        for (KitchenItemProvider provider : kitchen.getItemProviders(null)) {
+            IngredientToken token = provider.findIngredient(ingredient, List.of(), CacheHint.NONE);
+            if (token != null) {
+                ItemStack found = token.consume();
+                if (!found.isEmpty()) {
+                    items.set(SLOT_CONTAINER, found.copyWithCount(1));
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Checks that all recipe ingredients are satisfied by items in slots 0-5,
+     * and if the recipe requires a container, checks slot 6.
+     */
+    private boolean matchesRecipe(CookingPotRecipe recipe) {
+        List<Ingredient> ingredients = recipe.getIngredients();
+        if (ingredients.isEmpty()) return false;
+
+        boolean[] slotUsed = new boolean[INPUT_SLOTS];
+        for (Ingredient ingredient : ingredients) {
+            boolean matched = false;
+            for (int i = 0; i < INPUT_SLOTS; i++) {
+                if (slotUsed[i]) continue;
+                if (!items.get(i).isEmpty() && ingredient.test(items.get(i))) {
+                    slotUsed[i] = true;
+                    matched = true;
+                    break;
+                }
+            }
+            if (!matched) return false;
+        }
+
+        // Check container requirement
+        ItemStack containerRequired = recipe.getOutputContainer();
+        if (!containerRequired.isEmpty()) {
+            ItemStack containerSlot = items.get(SLOT_CONTAINER);
+            if (containerSlot.isEmpty() || !ItemStack.isSameItemSameComponents(containerSlot, containerRequired)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Consumes one item from matching slots for each ingredient, and shrinks slot 6 if container needed.
+     */
+    private void consumeForRecipe(CookingPotRecipe recipe) {
+        List<Ingredient> ingredients = recipe.getIngredients();
+        boolean[] slotUsed = new boolean[INPUT_SLOTS];
+
+        for (Ingredient ingredient : ingredients) {
+            for (int i = 0; i < INPUT_SLOTS; i++) {
+                if (slotUsed[i]) continue;
+                if (!items.get(i).isEmpty() && ingredient.test(items.get(i))) {
+                    slotUsed[i] = true;
+                    items.get(i).shrink(1);
+                    if (items.get(i).isEmpty()) items.set(i, ItemStack.EMPTY);
+                    break;
+                }
+            }
+        }
+
+        ItemStack containerRequired = recipe.getOutputContainer();
+        if (!containerRequired.isEmpty()) {
+            ItemStack containerSlot = items.get(SLOT_CONTAINER);
+            containerSlot.shrink(1);
+            if (containerSlot.isEmpty()) items.set(SLOT_CONTAINER, ItemStack.EMPTY);
+        }
+    }
+
+    private void finishCooking(Level level, BlockPos pos, BlockState state) {
+        if (pendingOutput != null) {
+            // Try pushing output to kitchen network first
+            if (!InventoryHelper.pushToKitchen(level, pos, pendingOutput)) {
+                items.set(SLOT_OUTPUT, pendingOutput);
+            }
+        }
         pendingOutput = null;
         cookTime = 0;
-        for (int i = 0; i < INPUT_SLOTS; i++) items.set(i, ItemStack.EMPTY);
-        level.setBlock(worldPosition, state.setValue(PotStandBlock.ACTIVE, false), 3);
+        level.setBlock(pos, state.setValue(PotStandBlock.ACTIVE, false), 3);
     }
 
     // ------------------------------------------------------------------
@@ -166,6 +310,13 @@ public class PotStandBlockEntity extends BlockEntity
     }
 
     @Override
+    public boolean canPlaceItem(int slot, ItemStack stack) {
+        if (slot == SLOT_OUTPUT) return false;
+        if (slot == SLOT_FUEL) return getBurnTime(stack) > 0;
+        return true;
+    }
+
+    @Override
     public boolean stillValid(Player player) {
         return level != null
                 && level.getBlockEntity(worldPosition) == this
@@ -180,7 +331,7 @@ public class PotStandBlockEntity extends BlockEntity
     // KitchenItemProcessorHolder
     // ------------------------------------------------------------------
 
-    @Override public KitchenItemProcessor getKitchenItemProcessor() { return processor; }
+    public KitchenItemProcessor getKitchenItemProcessor() { return processor; }
 
     // ------------------------------------------------------------------
     // MenuProvider / Nameable
@@ -219,7 +370,6 @@ public class PotStandBlockEntity extends BlockEntity
 
     public boolean isCooking() { return pendingOutput != null; }
 
-    @Override
     public AABB getRenderBoundingBox() { return new AABB(worldPosition).inflate(1); }
 
     // ------------------------------------------------------------------
@@ -232,6 +382,8 @@ public class PotStandBlockEntity extends BlockEntity
         ContainerHelper.saveAllItems(tag, items, registries);
         tag.putInt("CookTime", cookTime);
         tag.putInt("CookTimeTotal", cookTimeTotal);
+        tag.putInt("BurnTime", burnTime);
+        tag.putInt("BurnTimeTotal", burnTimeTotal);
         if (pendingOutput != null && !pendingOutput.isEmpty())
             tag.put("PendingOutput", pendingOutput.save(registries));
         if (customName != null)
@@ -244,6 +396,8 @@ public class PotStandBlockEntity extends BlockEntity
         ContainerHelper.loadAllItems(tag, items, registries);
         cookTime = tag.getInt("CookTime");
         cookTimeTotal = tag.getInt("CookTimeTotal");
+        burnTime = tag.getInt("BurnTime");
+        burnTimeTotal = tag.getInt("BurnTimeTotal");
         if (tag.contains("PendingOutput"))
             pendingOutput = ItemStack.parse(registries, tag.getCompound("PendingOutput")).orElse(null);
         if (tag.contains("CustomName"))

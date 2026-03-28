@@ -49,6 +49,14 @@ public class PotStandScreen extends AbstractContainerScreen<PotStandMenu> {
                     9, arrowHeight,               // width × partial height
                     256, 256);
         }
+
+        // Fuel fire
+        float burnProgress = menu.getBurnProgress();
+        if (burnProgress > 0f) {
+            int fireHeight = (int) (14 * burnProgress);
+            graphics.blit(TEXTURE, leftPos + 10, topPos + 72 + (14 - fireHeight),
+                    185, 14 - fireHeight, 9, fireHeight, 256, 256);
+        }
     }
 
     @Override
@@ -59,9 +67,16 @@ public class PotStandScreen extends AbstractContainerScreen<PotStandMenu> {
 
     @Override
     protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
-        // Title top-left
         graphics.drawString(font, title, titleLabelX, titleLabelY, 0x404040, false);
-        // "Inventory" label above player slots
         graphics.drawString(font, playerInventoryTitle, inventoryLabelX, inventoryLabelY, 0x404040, false);
+
+        int color = 0x636363;
+        // Label for the 3+3 ingredient section (right of the ingredient slots, x>44)
+        graphics.drawString(font, Component.translatable("gui.cfb_delight.ingredients"), 62, 26, color, false);
+        // Labels above container and output slots (in the empty right-half area at y=44)
+        graphics.drawString(font, Component.translatable("gui.cfb_delight.container"),   62, 44, color, false);
+        graphics.drawString(font, Component.translatable("gui.cfb_delight.output"),     116, 44, color, false);
+        // Label to the right of fuel slot (fuel slot is at x=8, y=72)
+        graphics.drawString(font, Component.translatable("gui.cfb_delight.fuel"),        27, 76, color, false);
     }
 }
