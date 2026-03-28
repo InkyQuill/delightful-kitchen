@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": ["BKB", "BEB", "BBB"],
+  "key": {
+    "B": { "item": "minecraft:bricks" },
+    "K": { "item": "cookingforblockheads:counter" },
+    "E": { "item": "minecraft:ender_chest" }
+  },
+  "result": { "id": "cfb_delight:cabinet_of_holding", "count": 1 }
+}

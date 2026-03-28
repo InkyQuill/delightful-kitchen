@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "BCB",
+    "BKB",
+    "BDB"
+  ],
+  "key": {
+    "B": { "item": "minecraft:bricks" },
+    "C": { "item": "farmersdelight:cutting_board" },
+    "K": { "item": "cookingforblockheads:counter" },
+    "D": { "item": "farmersdelight:diamond_knife" }
+  },
+  "result": {
+    "id": "cfb_delight:auto_cutter",
+    "count": 1
+  }
+}

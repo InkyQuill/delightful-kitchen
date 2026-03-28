@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "BBB",
+    "BHB",
+    "BFB"
+  ],
+  "key": {
+    "B": { "item": "minecraft:bricks" },
+    "H": { "item": "minecraft:hopper" },
+    "F": { "item": "minecraft:furnace" }
+  },
+  "result": {
+    "id": "cfb_delight:fuel_provider",
+    "count": 1
+  }
+}
