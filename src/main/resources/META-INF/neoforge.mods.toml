@@ -1,3 +1,5 @@
+modLoader="javafml"
+loaderVersion="[4,)"
 license="${mod_license}"
 
 [[mods]]
@@ -38,3 +40,17 @@ discover bowls, bottles, and other FD holders from the kitchen inventory.
     versionRange="[1.0,)"
     ordering="AFTER"
     side="BOTH"
+
+[[dependencies.${mod_id}]]
+    modId="jei"
+    type="optional"
+    versionRange="[19.0,)"
+    ordering="AFTER"
+    side="CLIENT"
+
+[[dependencies.${mod_id}]]
+    modId="roughlyenoughitems"
+    type="optional"
+    versionRange="[16.0,)"
+    ordering="AFTER"
+    side="CLIENT"

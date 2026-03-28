@@ -26,14 +26,11 @@ sourceSets.main.resources {
 }
 
 repositories {
-    // Twelve Iterations Maven for Cooking for Blockheads and Balm
+    // Twelve Iterations Maven for Cooking for Blockheads and Balm (releases + snapshots)
     maven {
         name = "TwelveIterations"
         url = "https://maven.twelveiterations.com/repository/maven-public/"
     }
-    // CurseForge Maven for Farmer's Delight (or use a local file dependency)
-    // Uncomment and set the correct file ID once you have the 1.21.x NeoForge artifact:
-    // maven { url = "https://www.cursemaven.com" }
 }
 
 base {
@@ -83,7 +80,7 @@ runs {
         systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
     }
 
-    clientData {
+    data {
         // example of overriding the workingDirectory set in configureEach above, uncomment if you want to use it
         // workingDirectory project.file('run-data')
 
@@ -109,21 +106,31 @@ dependencies {
     // For all intends and purposes: You can treat this dependency as if it is a normal library you would use.
     implementation "net.neoforged:neoforge:${neo_version}"
 
-    // Cooking for Blockheads - required at compile and runtime
-    compileOnly "net.blay09.mods:cookingforblockheads-neoforge:${cfb_version}"
-    localRuntime "net.blay09.mods:cookingforblockheads-neoforge:${cfb_version}"
+    // Cooking for Blockheads - built locally from ../CookingForBlockheads (1.21.1 branch)
+    compileOnly files("../CookingForBlockheads/neoforge/build/libs/cookingforblockheads-neoforge-${minecraft_version}-${cfb_version}.jar")
+    localRuntime files("../CookingForBlockheads/neoforge/build/libs/cookingforblockheads-neoforge-${minecraft_version}-${cfb_version}.jar")
 
-    // Balm (transitive through CfB, but explicitly declared for API access)
-    // compileOnly "net.blay09.mods:balm-neoforge:${balm_version}"
+    // Balm - used directly in FarmersDelightCompat; not transitively visible from compileOnly CfB
+    compileOnly("net.blay09.mods:balm-neoforge:${balm_version}") { changing = true }
+    localRuntime("net.blay09.mods:balm-neoforge:${balm_version}") { changing = true }
 
-    // Farmer's Delight for NeoForge 1.21.x
-    // NOTE: The local FarmersDelight source is 1.20.1 Forge; swap for the 1.21.x NeoForge artifact.
-    // Option A: Local build artifact (build FD from source first)
-    // compileOnly files("libs/farmersdelight-neoforge-${minecraft_version}-${fd_version}.jar")
-    // localRuntime files("libs/farmersdelight-neoforge-${minecraft_version}-${fd_version}.jar")
-    // Option B: CurseForge Maven (replace FILEID with the actual file ID)
-    // compileOnly "curse.maven:farmers-delight-398521:FILEID"
-    // localRuntime "curse.maven:farmers-delight-398521:FILEID"
+    // Farmer's Delight for NeoForge 1.21.1
+    // Build locally first: cd ../FarmersDelight && ./gradlew build
+    // Jar is output as FarmersDelight-1.21.1-<version>.jar
+    compileOnly files("../FarmersDelight/build/libs/FarmersDelight-${minecraft_version}-${fd_version}.jar")
+    localRuntime files("../FarmersDelight/build/libs/FarmersDelight-${minecraft_version}-${fd_version}.jar")
+
+    // Just Enough Items (optional) - built locally from ../JustEnoughItems
+    compileOnly files("../JustEnoughItems/NeoForge/build/libs/jei-1.21.1-neoforge-19.27.0.9999.jar")
+    localRuntime files("../JustEnoughItems/NeoForge/build/libs/jei-1.21.1-neoforge-19.27.0.9999.jar")
+
+    // Roughly Enough Items (optional) - built locally from ../RoughlyEnoughItems
+    compileOnly files("../RoughlyEnoughItems/neoforge/build/libs/RoughlyEnoughItems-16.0.9999.jar")
+    compileOnly files("../RoughlyEnoughItems/api/build/libs/RoughlyEnoughItems-api-transformProductionNeoForge.jar")
+    compileOnly files("../RoughlyEnoughItems/default-plugin/build/libs/RoughlyEnoughItems-default-plugin-transformProductionNeoForge.jar")
+    compileOnly files("../RoughlyEnoughItems/api/build/loom-cache/remapped_working/loom_mappings_1_21_layered_hash_1934350348_v2.me.shedaniel.cloth-basic-math-0.6.1.jar")
+    compileOnly files("../RoughlyEnoughItems/neoforge/build/loom-cache/remapped_working/loom_mappings_1_21_layered_hash_1934350348_v2_neoforge_21_0_167_forge.dev.architectury-architectury-neoforge-13.0.6.jar")
+    // localRuntime files("../RoughlyEnoughItems/neoforge/build/libs/RoughlyEnoughItems-16.0.9999.jar")
 }
 
 // This block of code expands all declared replace properties in the specified resource targets.
