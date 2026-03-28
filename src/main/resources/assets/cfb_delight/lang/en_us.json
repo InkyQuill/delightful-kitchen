@@ -1,0 +1,17 @@
+{
+  "block.cfb_delight.pot_stand":        "Pot Stand",
+  "block.cfb_delight.auto_cutter":      "Auto Cutter",
+  "block.cfb_delight.grill":            "Grill",
+  "block.cfb_delight.container_storage": "Container Storage",
+
+  "container.cfb_delight.pot_stand":         "Pot Stand",
+  "container.cfb_delight.auto_cutter":       "Auto Cutter",
+  "container.cfb_delight.grill":             "Grill",
+  "container.cfb_delight.container_storage": "Container Storage",
+
+  "gui.cfb_delight.bowls":   "Bowls",
+  "gui.cfb_delight.bottles": "Bottles",
+  "gui.cfb_delight.other":   "Other",
+
+  "itemGroup.cfb_delight": "CfB-Delight"
+}

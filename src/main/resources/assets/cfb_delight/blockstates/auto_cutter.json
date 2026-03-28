@@ -1,0 +1,12 @@
+{
+  "variants": {
+    "active=false,facing=north": { "model": "cfb_delight:block/auto_cutter" },
+    "active=false,facing=south": { "model": "cfb_delight:block/auto_cutter", "y": 180 },
+    "active=false,facing=west":  { "model": "cfb_delight:block/auto_cutter", "y": 270 },
+    "active=false,facing=east":  { "model": "cfb_delight:block/auto_cutter", "y": 90 },
+    "active=true,facing=north":  { "model": "cfb_delight:block/auto_cutter_active" },
+    "active=true,facing=south":  { "model": "cfb_delight:block/auto_cutter_active", "y": 180 },
+    "active=true,facing=west":   { "model": "cfb_delight:block/auto_cutter_active", "y": 270 },
+    "active=true,facing=east":   { "model": "cfb_delight:block/auto_cutter_active", "y": 90 }
+  }
+}

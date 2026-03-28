@@ -1,0 +1,8 @@
+{
+  "variants": {
+    "facing=north": { "model": "cfb_delight:block/container_storage" },
+    "facing=south": { "model": "cfb_delight:block/container_storage", "y": 180 },
+    "facing=west":  { "model": "cfb_delight:block/container_storage", "y": 270 },
+    "facing=east":  { "model": "cfb_delight:block/container_storage", "y": 90 }
+  }
+}

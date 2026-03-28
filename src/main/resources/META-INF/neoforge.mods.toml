@@ -1,0 +1,40 @@
+license="${mod_license}"
+
+[[mods]]
+modId="${mod_id}"
+version="${mod_version}"
+displayName="${mod_name}"
+description='''
+A compatibility plugin that bridges Cooking for Blockheads with Farmer's Delight.
+Adds a Pot Stand (for Cooking Pot recipes), Auto Cutter (for Cutting Board recipes),
+and a Grill (for campfire/stove recipes) as CfB kitchen blocks. Also ensures CfB can
+discover bowls, bottles, and other FD holders from the kitchen inventory.
+'''
+
+[[dependencies.${mod_id}]]
+    modId="neoforge"
+    type="required"
+    versionRange="[${neo_version},)"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.${mod_id}]]
+    modId="minecraft"
+    type="required"
+    versionRange="${minecraft_version_range}"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.${mod_id}]]
+    modId="cookingforblockheads"
+    type="required"
+    versionRange="[21.0,)"
+    ordering="AFTER"
+    side="BOTH"
+
+[[dependencies.${mod_id}]]
+    modId="farmersdelight"
+    type="required"
+    versionRange="[1.0,)"
+    ordering="AFTER"
+    side="BOTH"

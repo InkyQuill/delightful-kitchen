@@ -1,0 +1,12 @@
+{
+  "variants": {
+    "lit=false,facing=north": { "model": "cfb_delight:block/grill" },
+    "lit=false,facing=south": { "model": "cfb_delight:block/grill", "y": 180 },
+    "lit=false,facing=west":  { "model": "cfb_delight:block/grill", "y": 270 },
+    "lit=false,facing=east":  { "model": "cfb_delight:block/grill", "y": 90 },
+    "lit=true,facing=north":  { "model": "cfb_delight:block/grill_lit" },
+    "lit=true,facing=south":  { "model": "cfb_delight:block/grill_lit", "y": 180 },
+    "lit=true,facing=west":   { "model": "cfb_delight:block/grill_lit", "y": 270 },
+    "lit=true,facing=east":   { "model": "cfb_delight:block/grill_lit", "y": 90 }
+  }
+}

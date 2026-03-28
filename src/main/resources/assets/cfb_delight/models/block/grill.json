@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/orientable",
+  "textures": {
+    "top":   "cfb_delight:block/grill_top",
+    "front": "cfb_delight:block/grill_front",
+    "side":  "cfb_delight:block/grill_side"
+  }
+}
