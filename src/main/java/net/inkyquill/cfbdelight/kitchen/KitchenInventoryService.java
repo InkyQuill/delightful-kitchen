@@ -60,9 +60,9 @@ public class KitchenInventoryService {
         }
 
         ItemStack remainder = stack.copy();
-        insertIntoMatchingSlots(remainder, simulate);
+        remainder = insertIntoMatchingSlots(remainder, simulate);
         if (!remainder.isEmpty()) {
-            insertIntoEmptySlots(remainder, simulate);
+            remainder = insertIntoEmptySlots(remainder, simulate);
         }
         return remainder.isEmpty() ? ItemStack.EMPTY : remainder;
     }
@@ -88,7 +88,7 @@ public class KitchenInventoryService {
         return stacks;
     }
 
-    private void insertIntoMatchingSlots(ItemStack remainder, boolean simulate) {
+    private ItemStack insertIntoMatchingSlots(ItemStack remainder, boolean simulate) {
         for (KitchenInventoryEndpoint endpoint : endpoints) {
             for (int slot = 0; slot < endpoint.size() && !remainder.isEmpty(); slot++) {
                 ItemStack existing = endpoint.get(slot);
@@ -101,9 +101,10 @@ public class KitchenInventoryService {
                 remainder = endpoint.insert(slot, remainder, simulate);
             }
         }
+        return remainder;
     }
 
-    private void insertIntoEmptySlots(ItemStack remainder, boolean simulate) {
+    private ItemStack insertIntoEmptySlots(ItemStack remainder, boolean simulate) {
         for (KitchenInventoryEndpoint endpoint : endpoints) {
             for (int slot = 0; slot < endpoint.size() && !remainder.isEmpty(); slot++) {
                 if (!endpoint.get(slot).isEmpty() || !endpoint.mayPlace(slot, remainder)) {
@@ -113,6 +114,7 @@ public class KitchenInventoryService {
                 remainder = endpoint.insert(slot, remainder, simulate);
             }
         }
+        return remainder;
     }
 
     private static boolean matches(ItemStack prototype, ItemStack stack) {
