@@ -11,6 +11,7 @@ import net.minecraft.world.item.crafting.Recipe;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 public final class KitchenRecipeAdapters {
@@ -28,7 +29,7 @@ public final class KitchenRecipeAdapters {
     }
 
     public static void register(KitchenRecipeAdapter<? extends Recipe<?>> adapter) {
-        ADAPTERS.add(adapter);
+        ADAPTERS.add(Objects.requireNonNull(adapter, "adapter"));
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})

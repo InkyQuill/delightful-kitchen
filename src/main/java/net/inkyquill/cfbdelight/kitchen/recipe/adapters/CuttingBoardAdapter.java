@@ -22,6 +22,7 @@ public final class CuttingBoardAdapter implements KitchenRecipeAdapter<CuttingBo
     @Override
     public Optional<PlannedRecipe> adapt(ResourceLocation id, CuttingBoardRecipe recipe, HolderLookup.Provider registries) {
         List<ItemStack> outputs = recipe.getRollableResults().stream()
+                .filter(result -> result.chance() >= 1.0f)
                 .map(result -> result.stack().copy())
                 .filter(stack -> !stack.isEmpty())
                 .toList();
