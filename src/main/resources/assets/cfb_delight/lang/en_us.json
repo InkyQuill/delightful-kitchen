@@ -14,6 +14,9 @@
   "block.cfb_delight.chef_counter": "Chef's Counter",
   "container.cfb_delight.chef_counter": "Chef's Counter",
   "container.cfb_delight.chef_counter.status_unlinked": "Kitchen scanner not connected.",
+  "gui.cfb_delight.chef_counter.floor_tiles": "Floor tiles: %s",
+  "gui.cfb_delight.chef_counter.members": "Kitchen blocks: %s",
+  "gui.cfb_delight.chef_counter.multiple_counters": "Multiple Chef's Counters share this floor.",
 
   "block.cfb_delight.fuel_provider": "Fuel Provider",
   "container.cfb_delight.fuel_provider": "Fuel Provider",
