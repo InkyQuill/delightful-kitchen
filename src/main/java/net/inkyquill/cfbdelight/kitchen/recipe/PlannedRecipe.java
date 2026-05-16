@@ -4,6 +4,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 public record PlannedRecipe(
@@ -17,10 +18,17 @@ public record PlannedRecipe(
         boolean asynchronous
 ) {
     public PlannedRecipe {
-        ingredients = List.copyOf(ingredients);
-        outputs = outputs.stream().map(ItemStack::copy).toList();
-        servingContainer = servingContainer.map(ItemStack::copy);
-        if (outputs.isEmpty() || outputs.stream().allMatch(ItemStack::isEmpty)) {
+        id = Objects.requireNonNull(id, "id");
+        ingredients = List.copyOf(Objects.requireNonNull(ingredients, "ingredients"));
+        outputs = Objects.requireNonNull(outputs, "outputs").stream()
+                .map(output -> Objects.requireNonNull(output, "outputs cannot contain null"))
+                .filter(output -> !output.isEmpty())
+                .map(ItemStack::copy)
+                .toList();
+        stationType = Objects.requireNonNull(stationType, "stationType");
+        servingContainer = Objects.requireNonNull(servingContainer, "servingContainer").map(ItemStack::copy);
+        fuel = Objects.requireNonNull(fuel, "fuel");
+        if (outputs.isEmpty()) {
             throw new IllegalArgumentException("planned recipe must have a non-empty output");
         }
         if (processingTime < 0) {

@@ -5,6 +5,7 @@ import net.minecraft.world.item.ItemStack;
 
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Objects;
 
 public record RecipePlan(
         ResourceLocation targetRecipeId,
@@ -14,9 +15,11 @@ public record RecipePlan(
         EnumSet<PlanningBlocker> blockers
 ) {
     public RecipePlan {
-        output = output.copy();
-        steps = List.copyOf(steps);
-        blockers = blockers.clone();
+        targetRecipeId = Objects.requireNonNull(targetRecipeId, "targetRecipeId");
+        output = Objects.requireNonNull(output, "output").copy();
+        state = Objects.requireNonNull(state, "state");
+        steps = List.copyOf(Objects.requireNonNull(steps, "steps"));
+        blockers = Objects.requireNonNull(blockers, "blockers").clone();
     }
 
     public static RecipePlan blocked(ResourceLocation targetRecipeId, ItemStack output,
