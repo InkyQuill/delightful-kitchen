@@ -12,7 +12,6 @@ public class KitchenInventoryView implements Container {
     private final KitchenInventoryService service;
     private final BlockPos terminalPos;
     private NonNullList<ItemStack> visibleStacks;
-    private NonNullList<ItemStack> syncedStacks;
 
     public KitchenInventoryView(KitchenInventoryService service, BlockPos terminalPos) {
         this.service = service;
@@ -81,18 +80,13 @@ public class KitchenInventoryView implements Container {
 
     @Override
     public void setItem(int slot, ItemStack stack) {
-        if (!isValidSlot(slot) || stack.isEmpty()) {
-            refresh();
-            return;
-        }
-
-        service.insert(stack, false);
+        // Virtual slots cannot be faithfully replaced. Keep this read/extract-only
+        // until the owning menu routes inserts through an explicit operation.
         refresh();
     }
 
     @Override
     public void setChanged() {
-        reconcileVisibleChanges();
         refresh();
     }
 
@@ -116,58 +110,25 @@ public class KitchenInventoryView implements Container {
 
     @Override
     public boolean canPlaceItem(int slot, ItemStack stack) {
-        return isValidSlot(slot) && !stack.isEmpty() && service.insert(stack, true).getCount() < stack.getCount();
+        return false;
     }
 
     @Override
     public int getMaxStackSize() {
-        return 64;
+        return 0;
+    }
+
+    @Override
+    public int getMaxStackSize(ItemStack stack) {
+        return 0;
     }
 
     private void refresh() {
         visibleStacks = service.visibleStacks(VISIBLE_SLOTS);
-        syncedStacks = copyStacks(visibleStacks);
     }
 
     private static boolean isValidSlot(int slot) {
         return slot >= 0 && slot < VISIBLE_SLOTS;
     }
 
-    private void reconcileVisibleChanges() {
-        if (syncedStacks == null) {
-            return;
-        }
-
-        for (int slot = 0; slot < VISIBLE_SLOTS; slot++) {
-            ItemStack before = syncedStacks.get(slot);
-            ItemStack after = visibleStacks.get(slot);
-            if (ItemStack.isSameItemSameComponents(before, after)) {
-                int difference = after.getCount() - before.getCount();
-                if (difference > 0) {
-                    service.insert(after.copyWithCount(difference), false);
-                } else if (difference < 0) {
-                    service.extract(before, -difference, false);
-                }
-                continue;
-            }
-
-            if (!before.isEmpty()) {
-                service.extract(before, before.getCount(), false);
-            }
-            if (!after.isEmpty()) {
-                service.insert(after, false);
-            }
-        }
-    }
-
-    private static NonNullList<ItemStack> copyStacks(NonNullList<ItemStack> stacks) {
-        NonNullList<ItemStack> copies = NonNullList.withSize(stacks.size(), ItemStack.EMPTY);
-        for (int i = 0; i < stacks.size(); i++) {
-            ItemStack stack = stacks.get(i);
-            if (!stack.isEmpty()) {
-                copies.set(i, stack.copy());
-            }
-        }
-        return copies;
-    }
 }
