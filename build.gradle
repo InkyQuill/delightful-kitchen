@@ -119,6 +119,7 @@ dependencies {
     // Jar is output as FarmersDelight-1.21.1-<version>.jar
     compileOnly files("../FarmersDelight/build/libs/FarmersDelight-${minecraft_version}-${fd_version}.jar")
     localRuntime files("../FarmersDelight/build/libs/FarmersDelight-${minecraft_version}-${fd_version}.jar")
+    testImplementation files("../FarmersDelight/build/libs/FarmersDelight-${minecraft_version}-${fd_version}.jar")
 
     // Just Enough Items (optional) - built locally from ../JustEnoughItems
     compileOnly files("../JustEnoughItems/NeoForge/build/libs/jei-1.21.1-neoforge-19.27.0.9999.jar")

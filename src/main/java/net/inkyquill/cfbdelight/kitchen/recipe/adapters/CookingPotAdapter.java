@@ -35,6 +35,6 @@ public final class CookingPotAdapter implements KitchenRecipeAdapter<CookingPotR
                 .filter(stack -> !stack.isEmpty())
                 .map(ItemStack::copy);
         return Optional.of(new PlannedRecipe(id, ingredients, List.of(output), KitchenStationType.COOKING_POT,
-                container, Optional.empty(), recipe.getCookTime(), true));
+                container, FuelRequirements.furnaceFuel(), recipe.getCookTime(), true));
     }
 }

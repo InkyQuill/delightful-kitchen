@@ -28,7 +28,7 @@ public final class CampfireCookingAdapter implements KitchenRecipeAdapter<Campfi
         }
 
         return Optional.of(new PlannedRecipe(id, List.of(new PlannedIngredient(recipe.getIngredients().getFirst(), 1)),
-                List.of(output), KitchenStationType.GRILL, Optional.empty(), Optional.empty(),
+                List.of(output), KitchenStationType.GRILL, Optional.empty(), FuelRequirements.furnaceFuel(),
                 recipe.getCookingTime(), true));
     }
 }
