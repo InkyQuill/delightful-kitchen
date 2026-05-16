@@ -12,9 +12,9 @@ B CB B
 B KC B
 B D B, где B - Brick, D - Diamond Knife, KC - Kitchen Counter, CB - Cutting Board
 
-Cabinet Of Holding - имеет хранилище в размере двух сундуков - собирает в себя результаты из блоков мода. Предлагаю рецепт как Kitchen Counter + Ender Chest + что-то ещё. 
+Cabinet Of Holding - имеет хранилище в размере двух сундуков - собирает в себя результаты из блоков мода. Предлагаю рецепт как Kitchen Counter + Ender Chest + что-то ещё.
 
-Например: 
+Например:
 B K B
 B E B
 B B B , где B - Brick, E - Ender Chest, K - Kitchen Counter
@@ -25,13 +25,13 @@ B S B
 B K B
 B O B , где B - Brick, S - сковородка из FD, K - Kitchen Counter, O - печка из FD
 
-Pot Stand - замена Pot из FD - требует топлива. Делается из Kitchen Counter, блока печки из FD, и Cooking Pot из FD - самостоятельно варит. Используем рецепты Cooking Pot. Используется время, топливо, есть очередь. Если рецепту требуется контейнер, пытается искать Container Storage, и брать оттуда, или же из других инвентарей Kitchen. Выдача так же, в Cabinet of Holding или соседние инвентари 
+Pot Stand - замена Pot из FD - требует топлива. Делается из Kitchen Counter, блока печки из FD, и Cooking Pot из FD - самостоятельно варит. Используем рецепты Cooking Pot. Используется время, топливо, есть очередь. Если рецепту требуется контейнер, пытается искать Container Storage, и брать оттуда, или же из других инвентарей Kitchen. Выдача так же, в Cabinet of Holding или соседние инвентари
 
 B P B
 B K B
 B O B , где B - Brick, P - Cooking Pot, K - Kitchen Counter, O - печка из FD
 
-Container Storage - хранилище для контейнеров - бутылок, мисок. Делается из Kitchen Counter + Chest + Glass Bottle + Bowl. 
+Container Storage - хранилище для контейнеров - бутылок, мисок. Делается из Kitchen Counter + Chest + Glass Bottle + Bowl.
 
 B K B
 G C G
