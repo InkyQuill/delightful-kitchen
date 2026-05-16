@@ -113,7 +113,7 @@ public class CabinetOfHoldingBlockEntity extends BlockEntity
                     continue;
                 }
                 BlockEntity blockEntity = level.getBlockEntity(member);
-                if (isKitchenStation(blockEntity)) {
+                if (KitchenScanner.isKitchenStation(blockEntity)) {
                     continue;
                 }
                 if (blockEntity instanceof Container container) {
@@ -136,12 +136,6 @@ public class CabinetOfHoldingBlockEntity extends BlockEntity
 
         return new CabinetOfHoldingMenu(id, playerInventory, this,
                 ContainerLevelAccess.create(level, worldPosition));
-    }
-
-    private static boolean isKitchenStation(@Nullable BlockEntity blockEntity) {
-        return blockEntity instanceof AutoCutterBlockEntity
-                || blockEntity instanceof GrillBlockEntity
-                || blockEntity instanceof PotStandBlockEntity;
     }
 
     // ------------------------------------------------------------------

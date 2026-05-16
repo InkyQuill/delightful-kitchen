@@ -1,6 +1,8 @@
 {
-  "parent": "minecraft:block/cube_all",
+  "parent": "minecraft:block/cube_bottom_top",
   "textures": {
-    "all": "cfb_delight:block/kitchen_floor_top"
+    "top": "cfb_delight:block/kitchen_floor_top",
+    "side": "cfb_delight:block/kitchen_floor_side",
+    "bottom": "cfb_delight:block/kitchen_floor_side"
   }
 }

@@ -1,12 +1,16 @@
 package net.inkyquill.cfbdelight.kitchen;
 
 import net.inkyquill.cfbdelight.block.ModBlocks;
+import net.inkyquill.cfbdelight.block.entity.AutoCutterBlockEntity;
+import net.inkyquill.cfbdelight.block.entity.GrillBlockEntity;
+import net.inkyquill.cfbdelight.block.entity.PotStandBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.Container;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.neoforged.neoforge.capabilities.Capabilities;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -55,6 +59,21 @@ public final class KitchenScanner {
         return blockEntity instanceof Container
                 || level.getCapability(Capabilities.ItemHandler.BLOCK, pos, null) != null
                 || level.getBlockState(pos).is(ModBlocks.CHEF_COUNTER.get());
+    }
+
+    public static boolean isInventoryProvider(Level level, BlockPos pos) {
+        BlockEntity blockEntity = level.getBlockEntity(pos);
+        if (isKitchenStation(blockEntity)) {
+            return false;
+        }
+        return blockEntity instanceof Container
+                || level.getCapability(Capabilities.ItemHandler.BLOCK, pos, null) != null;
+    }
+
+    public static boolean isKitchenStation(@Nullable BlockEntity blockEntity) {
+        return blockEntity instanceof AutoCutterBlockEntity
+                || blockEntity instanceof GrillBlockEntity
+                || blockEntity instanceof PotStandBlockEntity;
     }
 
     private static Set<BlockPos> findConnectedFloors(Level level, BlockPos start) {

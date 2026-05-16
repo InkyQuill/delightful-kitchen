@@ -3,6 +3,7 @@ package net.inkyquill.cfbdelight.menu;
 import net.inkyquill.cfbdelight.block.ModBlocks;
 import net.inkyquill.cfbdelight.kitchen.KitchenScanResult;
 import net.inkyquill.cfbdelight.kitchen.KitchenScanner;
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -51,9 +52,19 @@ public class ChefCounterMenu extends AbstractContainerMenu {
         KitchenScanResult scan = access.evaluate(KitchenScanner::scan)
                 .orElseGet(() -> new KitchenScanResult(false, Set.of(), List.of(), List.of()));
         data.set(0, scan.floorCount());
-        data.set(1, scan.memberCount());
+        data.set(1, countInventoryProviders(access, scan));
         data.set(2, scan.hasMultipleCounters() ? 1 : 0);
         return data;
+    }
+
+    private static int countInventoryProviders(ContainerLevelAccess access, KitchenScanResult scan) {
+        int count = 0;
+        for (BlockPos member : scan.memberBlocks()) {
+            if (access.evaluate((level, ignored) -> KitchenScanner.isInventoryProvider(level, member)).orElse(false)) {
+                count++;
+            }
+        }
+        return count;
     }
 
     public int getFloorCount() {

@@ -80,9 +80,7 @@ public class KitchenInventoryView implements Container {
 
     @Override
     public void setItem(int slot, ItemStack stack) {
-        // Virtual slots cannot be faithfully replaced. Keep this read/extract-only
-        // until the owning menu routes inserts through an explicit operation.
-        refresh();
+        throw new UnsupportedOperationException("KitchenInventoryView is read-only; route inserts through KitchenInventoryService");
     }
 
     @Override
@@ -115,12 +113,12 @@ public class KitchenInventoryView implements Container {
 
     @Override
     public int getMaxStackSize() {
-        return 0;
+        return 64;
     }
 
     @Override
     public int getMaxStackSize(ItemStack stack) {
-        return 0;
+        return Math.min(64, stack.getMaxStackSize());
     }
 
     private void refresh() {

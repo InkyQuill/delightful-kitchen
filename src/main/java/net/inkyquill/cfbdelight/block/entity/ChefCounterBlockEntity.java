@@ -20,7 +20,7 @@ public class ChefCounterBlockEntity extends BlockEntity implements MenuProvider 
 
     @Override
     public Component getDisplayName() {
-        return Component.translatable("block.cfb_delight.chef_counter");
+        return Component.translatable("container.cfb_delight.chef_counter");
     }
 
     @Override
