@@ -53,7 +53,7 @@ public class KitchenInventoryView implements Container {
             return ItemStack.EMPTY;
         }
 
-        ItemStack extracted = service.extract(visible, amount, false);
+        ItemStack extracted = service.extract(visible, Math.min(amount, visible.getCount()), false);
         if (!extracted.isEmpty()) {
             refresh();
         }
