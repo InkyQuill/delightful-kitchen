@@ -123,10 +123,14 @@ public final class RecipePlanner {
         EnumSet<PlanningBlocker> blockers = EnumSet.noneOf(PlanningBlocker.class);
         List<PlannedRecipe> attemptedSteps = new ArrayList<>();
         boolean triedProducer = false;
+        boolean missingCandidateWithoutProducer = false;
 
         for (PlannedIngredient ingredient : candidates.ingredients()) {
             List<PlannedRecipe> producers = intermediateProducers(ingredient);
             if (producers.isEmpty()) {
+                if (candidates.hasMissingIngredient()) {
+                    missingCandidateWithoutProducer = true;
+                }
                 continue;
             }
 
@@ -140,6 +144,9 @@ public final class RecipePlanner {
             rememberFirstFailedBranch(attemptedSteps, attempt.steps());
         }
 
+        if (missingCandidateWithoutProducer) {
+            blockers.add(PlanningBlocker.MISSING_INTERMEDIATE_RECIPE);
+        }
         if (!triedProducer && blockers.isEmpty()) {
             blockers.add(candidates.hasMissingIngredient()
                     ? PlanningBlocker.MISSING_INTERMEDIATE_RECIPE
