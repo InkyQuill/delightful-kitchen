@@ -4,6 +4,7 @@ import net.inkyquill.cfbdelight.kitchen.recipe.KitchenInventorySnapshot;
 import net.minecraft.core.NonNullList;
 import net.minecraft.world.item.ItemStack;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
@@ -69,7 +70,7 @@ public class KitchenInventoryService {
     }
 
     public KitchenInventorySnapshot snapshot() {
-        java.util.ArrayList<ItemStack> stacks = new java.util.ArrayList<>();
+        ArrayList<ItemStack> stacks = new ArrayList<>();
         for (KitchenInventoryEndpoint endpoint : endpoints) {
             for (int slot = 0; slot < endpoint.size(); slot++) {
                 ItemStack stack = endpoint.get(slot);
