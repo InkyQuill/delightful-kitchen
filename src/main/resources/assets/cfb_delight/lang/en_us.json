@@ -14,6 +14,11 @@
 
   "block.cfb_delight.fuel_provider": "Fuel Provider",
   "container.cfb_delight.fuel_provider": "Fuel Provider",
+  "block.cfb_delight.kitchen_floor": "Kitchen Floor",
+  "item.cfb_delight.mop": "Mop",
+
+  "message.cfb_delight.kitchen_floor.camouflage_not_ready": "Kitchen floor appearance copying is not active in this build.",
+  "message.cfb_delight.kitchen_floor.reset": "Kitchen floor reset.",
 
   "gui.cfb_delight.bowls":   "Bowls",
   "gui.cfb_delight.bottles": "Bottles",

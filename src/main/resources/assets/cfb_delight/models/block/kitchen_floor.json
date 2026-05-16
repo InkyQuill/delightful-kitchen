@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/cube_all",
+  "textures": {
+    "all": "cfb_delight:block/kitchen_floor_top"
+  }
+}

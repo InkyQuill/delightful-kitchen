@@ -63,4 +63,12 @@ public class ModBlocks {
                             .mapColor(MapColor.STONE)
                             .strength(2.5f, 6.0f)
                             .sound(SoundType.STONE)));
+
+    /** Foundation block for standalone kitchen floor interactions. */
+    public static final DeferredBlock<KitchenFloorBlock> KITCHEN_FLOOR =
+            BLOCKS.register("kitchen_floor",
+                    () -> new KitchenFloorBlock(BlockBehaviour.Properties.of()
+                            .mapColor(MapColor.WOOD)
+                            .strength(1.5f, 3.0f)
+                            .sound(SoundType.WOOD)));
 }
