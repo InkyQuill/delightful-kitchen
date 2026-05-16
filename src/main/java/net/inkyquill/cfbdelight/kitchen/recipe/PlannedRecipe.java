@@ -31,4 +31,14 @@ public record PlannedRecipe(
     public ItemStack primaryOutput() {
         return outputs.getFirst().copy();
     }
+
+    @Override
+    public List<ItemStack> outputs() {
+        return outputs.stream().map(ItemStack::copy).toList();
+    }
+
+    @Override
+    public Optional<ItemStack> servingContainer() {
+        return servingContainer.map(ItemStack::copy);
+    }
 }

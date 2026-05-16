@@ -23,4 +23,14 @@ public record RecipePlan(
                                      List<PlannedRecipe> steps, EnumSet<PlanningBlocker> blockers) {
         return new RecipePlan(targetRecipeId, output, PlanState.BLOCKED, steps, blockers);
     }
+
+    @Override
+    public ItemStack output() {
+        return output.copy();
+    }
+
+    @Override
+    public EnumSet<PlanningBlocker> blockers() {
+        return blockers.clone();
+    }
 }
