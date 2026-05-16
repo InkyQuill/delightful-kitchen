@@ -35,7 +35,11 @@ class IngredientMatcherTest {
         Optional<List<ItemStack>> matches = IngredientMatcher.findMatches(snapshot, List.of(ingredient));
 
         assertTrue(matches.isPresent());
-        assertEquals(3, matches.orElseThrow().stream().mapToInt(ItemStack::getCount).sum());
+        List<ItemStack> consumed = matches.orElseThrow();
+        assertEquals(2, consumed.size());
+        assertTrue(consumed.stream().allMatch(stack -> stack.is(Items.WHEAT)));
+        assertEquals(List.of(2, 1), consumed.stream().map(ItemStack::getCount).toList());
+        assertEquals(List.of(2, 2), snapshot.stacks().stream().map(ItemStack::getCount).toList());
     }
 
     @Test
