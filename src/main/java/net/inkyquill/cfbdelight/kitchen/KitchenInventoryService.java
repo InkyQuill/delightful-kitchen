@@ -1,7 +1,6 @@
 package net.inkyquill.cfbdelight.kitchen;
 
 import net.minecraft.core.NonNullList;
-import net.minecraft.world.Container;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.Collection;
@@ -38,7 +37,6 @@ public class KitchenInventoryService {
 
         int extracted = 0;
         for (KitchenInventoryEndpoint endpoint : endpoints) {
-            Container container = endpoint.container();
             for (int slot = 0; slot < endpoint.size() && extracted < amount; slot++) {
                 ItemStack stack = endpoint.get(slot);
                 if (!matches(prototype, stack)) {
@@ -46,14 +44,10 @@ public class KitchenInventoryService {
                 }
 
                 int toExtract = Math.min(amount - extracted, stack.getCount());
-                if (!simulate) {
-                    stack.shrink(toExtract);
-                    if (stack.isEmpty()) {
-                        container.setItem(slot, ItemStack.EMPTY);
-                    }
-                    container.setChanged();
+                ItemStack extractedStack = endpoint.extract(slot, toExtract, simulate);
+                if (!extractedStack.isEmpty()) {
+                    extracted += extractedStack.getCount();
                 }
-                extracted += toExtract;
             }
         }
 
@@ -96,7 +90,6 @@ public class KitchenInventoryService {
 
     private void insertIntoMatchingSlots(ItemStack remainder, boolean simulate) {
         for (KitchenInventoryEndpoint endpoint : endpoints) {
-            Container container = endpoint.container();
             for (int slot = 0; slot < endpoint.size() && !remainder.isEmpty(); slot++) {
                 ItemStack existing = endpoint.get(slot);
                 if (existing.isEmpty()
@@ -105,39 +98,19 @@ public class KitchenInventoryService {
                     continue;
                 }
 
-                int maxSize = container.getMaxStackSize(existing);
-                int transfer = Math.min(remainder.getCount(), maxSize - existing.getCount());
-                if (transfer <= 0) {
-                    continue;
-                }
-
-                if (!simulate) {
-                    existing.grow(transfer);
-                    container.setChanged();
-                }
-                remainder.shrink(transfer);
+                remainder = endpoint.insert(slot, remainder, simulate);
             }
         }
     }
 
     private void insertIntoEmptySlots(ItemStack remainder, boolean simulate) {
         for (KitchenInventoryEndpoint endpoint : endpoints) {
-            Container container = endpoint.container();
             for (int slot = 0; slot < endpoint.size() && !remainder.isEmpty(); slot++) {
                 if (!endpoint.get(slot).isEmpty() || !endpoint.mayPlace(slot, remainder)) {
                     continue;
                 }
 
-                int transfer = Math.min(remainder.getCount(), container.getMaxStackSize(remainder));
-                if (transfer <= 0) {
-                    continue;
-                }
-
-                if (!simulate) {
-                    container.setItem(slot, remainder.copyWithCount(transfer));
-                    container.setChanged();
-                }
-                remainder.shrink(transfer);
+                remainder = endpoint.insert(slot, remainder, simulate);
             }
         }
     }

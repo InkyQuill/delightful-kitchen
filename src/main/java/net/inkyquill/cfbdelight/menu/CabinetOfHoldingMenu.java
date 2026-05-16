@@ -1,5 +1,6 @@
 package net.inkyquill.cfbdelight.menu;
 
+import net.inkyquill.cfbdelight.block.ModBlocks;
 import net.inkyquill.cfbdelight.kitchen.KitchenInventoryService;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.Container;
@@ -28,6 +29,7 @@ public class CabinetOfHoldingMenu extends AbstractContainerMenu {
     private static final int CONTAINER_SLOTS = ROWS * COLS; // 54
 
     private final Container container;
+    private final ContainerLevelAccess access;
     @Nullable private final KitchenInventoryService kitchenService;
 
     /** Client-side constructor (called from FriendlyByteBuf factory). */
@@ -48,6 +50,7 @@ public class CabinetOfHoldingMenu extends AbstractContainerMenu {
         super(ModMenuTypes.CABINET_OF_HOLDING.get(), containerId);
         checkContainerSize(container, CONTAINER_SLOTS);
         this.container = container;
+        this.access = access;
         this.kitchenService = kitchenService;
         container.startOpen(playerInventory.player);
 
@@ -78,10 +81,12 @@ public class CabinetOfHoldingMenu extends AbstractContainerMenu {
 
     @Override
     public void clicked(int slotId, int button, ClickType clickType, Player player) {
-        if (kitchenService != null
-                && slotId >= 0
-                && slotId < CONTAINER_SLOTS
-                && (clickType == ClickType.SWAP || clickType == ClickType.CLONE)) {
+        if (kitchenService != null && slotId >= 0 && slotId < CONTAINER_SLOTS) {
+            if (clickType == ClickType.PICKUP) {
+                handleKitchenPickupClick(slotId, button);
+            } else if (clickType == ClickType.QUICK_MOVE) {
+                quickMoveStack(player, slotId);
+            }
             return;
         }
         super.clicked(slotId, button, clickType, player);
@@ -114,6 +119,38 @@ public class CabinetOfHoldingMenu extends AbstractContainerMenu {
         if (stack.isEmpty()) slot.set(ItemStack.EMPTY);
         else slot.setChanged();
         return result;
+    }
+
+    private void handleKitchenPickupClick(int slotId, int button) {
+        if (button != 0 && button != 1) {
+            return;
+        }
+
+        Slot slot = slots.get(slotId);
+        ItemStack carried = getCarried();
+        if (carried.isEmpty()) {
+            ItemStack visible = slot.getItem();
+            if (visible.isEmpty()) {
+                return;
+            }
+            int amount = button == 0 ? visible.getCount() : (visible.getCount() + 1) / 2;
+            ItemStack extracted = kitchenService.extract(visible, amount, false);
+            if (!extracted.isEmpty()) {
+                setCarried(extracted);
+                container.setChanged();
+            }
+            return;
+        }
+
+        int amount = button == 0 ? carried.getCount() : 1;
+        ItemStack toInsert = carried.copyWithCount(amount);
+        ItemStack remainder = kitchenService.insert(toInsert, false);
+        int accepted = amount - remainder.getCount();
+        if (accepted > 0) {
+            carried.shrink(accepted);
+            setCarried(carried.isEmpty() ? ItemStack.EMPTY : carried);
+            container.setChanged();
+        }
     }
 
     private ItemStack quickMoveKitchenStack(Player player, int index, Slot slot) {
@@ -253,6 +290,9 @@ public class CabinetOfHoldingMenu extends AbstractContainerMenu {
 
     @Override
     public boolean stillValid(Player player) {
+        if (kitchenService != null) {
+            return AbstractContainerMenu.stillValid(access, player, ModBlocks.CABINET_OF_HOLDING.get());
+        }
         return container.stillValid(player);
     }
 

@@ -6,6 +6,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.world.Container;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.neoforged.neoforge.capabilities.Capabilities;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -51,7 +52,9 @@ public final class KitchenScanner {
 
     private static boolean isCompatibleMember(Level level, BlockPos pos) {
         BlockEntity blockEntity = level.getBlockEntity(pos);
-        return blockEntity instanceof Container || level.getBlockState(pos).is(ModBlocks.CHEF_COUNTER.get());
+        return blockEntity instanceof Container
+                || level.getCapability(Capabilities.ItemHandler.BLOCK, pos, null) != null
+                || level.getBlockState(pos).is(ModBlocks.CHEF_COUNTER.get());
     }
 
     private static Set<BlockPos> findConnectedFloors(Level level, BlockPos start) {

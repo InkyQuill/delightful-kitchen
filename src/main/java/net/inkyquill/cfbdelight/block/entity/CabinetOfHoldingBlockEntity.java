@@ -22,6 +22,7 @@ import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.neoforged.neoforge.capabilities.Capabilities;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -111,8 +112,17 @@ public class CabinetOfHoldingBlockEntity extends BlockEntity
                 if (member.equals(worldPosition)) {
                     continue;
                 }
-                if (level.getBlockEntity(member) instanceof Container container) {
+                BlockEntity blockEntity = level.getBlockEntity(member);
+                if (isKitchenStation(blockEntity)) {
+                    continue;
+                }
+                if (blockEntity instanceof Container container) {
                     endpoints.add(new KitchenInventoryEndpoint(member, container));
+                    continue;
+                }
+                var itemHandler = level.getCapability(Capabilities.ItemHandler.BLOCK, member, null);
+                if (itemHandler != null) {
+                    endpoints.add(new KitchenInventoryEndpoint(member, itemHandler));
                 }
             }
 
@@ -126,6 +136,12 @@ public class CabinetOfHoldingBlockEntity extends BlockEntity
 
         return new CabinetOfHoldingMenu(id, playerInventory, this,
                 ContainerLevelAccess.create(level, worldPosition));
+    }
+
+    private static boolean isKitchenStation(@Nullable BlockEntity blockEntity) {
+        return blockEntity instanceof AutoCutterBlockEntity
+                || blockEntity instanceof GrillBlockEntity
+                || blockEntity instanceof PotStandBlockEntity;
     }
 
     // ------------------------------------------------------------------
