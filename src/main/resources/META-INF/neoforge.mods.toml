@@ -7,10 +7,9 @@ modId="${mod_id}"
 version="${mod_version}"
 displayName="${mod_name}"
 description='''
-A compatibility plugin that bridges Cooking for Blockheads with Farmer's Delight.
-Adds a Pot Stand (for Cooking Pot recipes), Auto Cutter (for Cutting Board recipes),
-and a Grill (for campfire/stove recipes) as CfB kitchen blocks. Also ensures CfB can
-discover bowls, bottles, and other FD holders from the kitchen inventory.
+A standalone Farmer's Delight focused kitchen mod. Build a room-based kitchen,
+link inventories through Kitchen Floor, browse cookable foods at the Chef's
+Counter, and automate Farmer's Delight preparation through kitchen stations.
 '''
 
 [[dependencies.${mod_id}]]
