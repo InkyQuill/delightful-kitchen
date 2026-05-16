@@ -56,6 +56,14 @@ public class ModBlocks {
                             .strength(3.0f, 6.0f)
                             .sound(SoundType.WOOD)));
 
+    /** Standalone kitchen controller shell. */
+    public static final DeferredBlock<ChefCounterBlock> CHEF_COUNTER =
+            BLOCKS.register("chef_counter",
+                    () -> new ChefCounterBlock(BlockBehaviour.Properties.of()
+                            .mapColor(MapColor.WOOD)
+                            .strength(3.0f, 6.0f)
+                            .sound(SoundType.WOOD)));
+
     /** Stores fuel and pushes it to adjacent Grill and PotStand blocks. */
     public static final DeferredBlock<FuelProviderBlock> FUEL_PROVIDER =
             BLOCKS.register("fuel_provider",

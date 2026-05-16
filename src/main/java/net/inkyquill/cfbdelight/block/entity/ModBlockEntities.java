@@ -32,6 +32,10 @@ public class ModBlockEntities {
             BLOCK_ENTITIES.register("cabinet_of_holding", () ->
                     BlockEntityType.Builder.of(CabinetOfHoldingBlockEntity::new, ModBlocks.CABINET_OF_HOLDING.get()).build(null));
 
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<ChefCounterBlockEntity>> CHEF_COUNTER =
+            BLOCK_ENTITIES.register("chef_counter", () ->
+                    BlockEntityType.Builder.of(ChefCounterBlockEntity::new, ModBlocks.CHEF_COUNTER.get()).build(null));
+
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<FuelProviderBlockEntity>> FUEL_PROVIDER =
             BLOCK_ENTITIES.register("fuel_provider", () ->
                     BlockEntityType.Builder.of(FuelProviderBlockEntity::new, ModBlocks.FUEL_PROVIDER.get()).build(null));

@@ -32,6 +32,10 @@ public class ModMenuTypes {
             MENUS.register("cabinet_of_holding", () ->
                     IMenuTypeExtension.create(CabinetOfHoldingMenu::new));
 
+    public static final DeferredHolder<MenuType<?>, MenuType<ChefCounterMenu>> CHEF_COUNTER =
+            MENUS.register("chef_counter", () ->
+                    IMenuTypeExtension.create(ChefCounterMenu::new));
+
     public static final DeferredHolder<MenuType<?>, MenuType<FuelProviderMenu>> FUEL_PROVIDER =
             MENUS.register("fuel_provider", () ->
                     IMenuTypeExtension.create(FuelProviderMenu::new));

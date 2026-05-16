@@ -11,6 +11,9 @@
 
   "block.cfb_delight.cabinet_of_holding": "Cabinet of Holding",
   "container.cfb_delight.cabinet_of_holding": "Cabinet of Holding",
+  "block.cfb_delight.chef_counter": "Chef's Counter",
+  "container.cfb_delight.chef_counter": "Chef's Counter",
+  "container.cfb_delight.chef_counter.status_unlinked": "Kitchen scanner not connected.",
 
   "block.cfb_delight.fuel_provider": "Fuel Provider",
   "container.cfb_delight.fuel_provider": "Fuel Provider",
