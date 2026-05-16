@@ -1,5 +1,6 @@
 package net.inkyquill.cfbdelight.kitchen;
 
+import net.inkyquill.cfbdelight.kitchen.recipe.KitchenInventorySnapshot;
 import net.minecraft.core.NonNullList;
 import net.minecraft.world.item.ItemStack;
 
@@ -65,6 +66,19 @@ public class KitchenInventoryService {
             remainder = insertIntoEmptySlots(remainder, simulate);
         }
         return remainder.isEmpty() ? ItemStack.EMPTY : remainder;
+    }
+
+    public KitchenInventorySnapshot snapshot() {
+        java.util.ArrayList<ItemStack> stacks = new java.util.ArrayList<>();
+        for (KitchenInventoryEndpoint endpoint : endpoints) {
+            for (int slot = 0; slot < endpoint.size(); slot++) {
+                ItemStack stack = endpoint.get(slot);
+                if (!stack.isEmpty()) {
+                    stacks.add(stack.copy());
+                }
+            }
+        }
+        return new KitchenInventorySnapshot(stacks);
     }
 
     public NonNullList<ItemStack> visibleStacks(int limit) {
