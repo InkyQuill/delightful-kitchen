@@ -7,10 +7,13 @@ import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.Optional;
 
 /**
  * Menu for the Cabinet of Holding.
@@ -51,7 +54,12 @@ public class CabinetOfHoldingMenu extends AbstractContainerMenu {
         // 6 rows x 9 cabinet slots (y=18, 36, 54, 72, 90, 108)
         for (int row = 0; row < ROWS; row++) {
             for (int col = 0; col < COLS; col++) {
-                addSlot(new Slot(container, col + row * COLS, 8 + col * 18, 18 + row * 18));
+                int slot = col + row * COLS;
+                int x = 8 + col * 18;
+                int y = 18 + row * 18;
+                addSlot(kitchenService == null
+                        ? new Slot(container, slot, x, y)
+                        : new VirtualKitchenSlot(container, slot, x, y));
             }
         }
 
@@ -66,6 +74,17 @@ public class CabinetOfHoldingMenu extends AbstractContainerMenu {
         for (int col = 0; col < 9; col++) {
             addSlot(new Slot(playerInventory, col, 8 + col * 18, 198));
         }
+    }
+
+    @Override
+    public void clicked(int slotId, int button, ClickType clickType, Player player) {
+        if (kitchenService != null
+                && slotId >= 0
+                && slotId < CONTAINER_SLOTS
+                && (clickType == ClickType.SWAP || clickType == ClickType.CLONE)) {
+            return;
+        }
+        super.clicked(slotId, button, clickType, player);
     }
 
     @Override
@@ -167,6 +186,69 @@ public class CabinetOfHoldingMenu extends AbstractContainerMenu {
             }
         }
         return capacity;
+    }
+
+    private static final class VirtualKitchenSlot extends Slot {
+        private VirtualKitchenSlot(Container container, int slot, int x, int y) {
+            super(container, slot, x, y);
+        }
+
+        @Override
+        public boolean mayPlace(ItemStack stack) {
+            return false;
+        }
+
+        @Override
+        public boolean mayPickup(Player player) {
+            return true;
+        }
+
+        @Override
+        public boolean allowModification(Player player) {
+            return false;
+        }
+
+        @Override
+        public ItemStack remove(int amount) {
+            return ItemStack.EMPTY;
+        }
+
+        @Override
+        public Optional<ItemStack> tryRemove(int count, int decrement, Player player) {
+            return Optional.empty();
+        }
+
+        @Override
+        public ItemStack safeTake(int count, int decrement, Player player) {
+            return ItemStack.EMPTY;
+        }
+
+        @Override
+        public ItemStack safeInsert(ItemStack stack) {
+            return stack;
+        }
+
+        @Override
+        public ItemStack safeInsert(ItemStack stack, int increment) {
+            return stack;
+        }
+
+        @Override
+        public void setByPlayer(ItemStack stack) {
+        }
+
+        @Override
+        public void setByPlayer(ItemStack newStack, ItemStack oldStack) {
+        }
+
+        @Override
+        public void set(ItemStack stack) {
+        }
+
+        @Override
+        public boolean isFake() {
+            return true;
+        }
     }
 
     @Override
