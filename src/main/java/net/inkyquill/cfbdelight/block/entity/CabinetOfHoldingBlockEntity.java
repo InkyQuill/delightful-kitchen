@@ -1,5 +1,10 @@
 package net.inkyquill.cfbdelight.block.entity;
 
+import net.inkyquill.cfbdelight.block.ModBlocks;
+import net.inkyquill.cfbdelight.kitchen.KitchenInventoryEndpoint;
+import net.inkyquill.cfbdelight.kitchen.KitchenInventoryService;
+import net.inkyquill.cfbdelight.kitchen.KitchenInventoryView;
+import net.inkyquill.cfbdelight.kitchen.KitchenScanner;
 import net.inkyquill.cfbdelight.menu.CabinetOfHoldingMenu;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
@@ -19,12 +24,14 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
+
 /**
  * Block entity for the Cabinet of Holding.
  * <p>
- * Holds 54 items (equivalent to a double chest). Implements {@link Container}
- * so that CfB's tag-based fallback provider automatically exposes all slots
- * to the kitchen's ingredient search.
+ * When placed directly above Kitchen Floor, this opens a merged kitchen
+ * inventory terminal. The local 54-slot storage remains as a fallback for old
+ * worlds and cabinets outside a kitchen footprint.
  */
 public class CabinetOfHoldingBlockEntity extends BlockEntity
         implements Container, MenuProvider, Nameable {
@@ -97,6 +104,26 @@ public class CabinetOfHoldingBlockEntity extends BlockEntity
     @Override
     @Nullable
     public AbstractContainerMenu createMenu(int id, Inventory playerInventory, Player player) {
+        if (level != null && level.getBlockState(worldPosition.below()).is(ModBlocks.KITCHEN_FLOOR.get())) {
+            var scan = KitchenScanner.scan(level, worldPosition);
+            var endpoints = new ArrayList<KitchenInventoryEndpoint>();
+            for (BlockPos member : scan.memberBlocks()) {
+                if (member.equals(worldPosition)) {
+                    continue;
+                }
+                if (level.getBlockEntity(member) instanceof Container container) {
+                    endpoints.add(new KitchenInventoryEndpoint(member, container));
+                }
+            }
+
+            if (!endpoints.isEmpty()) {
+                var service = new KitchenInventoryService(endpoints);
+                var view = new KitchenInventoryView(service, worldPosition);
+                return new CabinetOfHoldingMenu(id, playerInventory, view, service,
+                        ContainerLevelAccess.create(level, worldPosition));
+            }
+        }
+
         return new CabinetOfHoldingMenu(id, playerInventory, this,
                 ContainerLevelAccess.create(level, worldPosition));
     }
