@@ -1,5 +1,6 @@
 package net.inkyquill.cfbdelight.menu;
 
+import net.inkyquill.cfbdelight.block.ModBlocks;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -38,7 +39,6 @@ public class ChefCounterMenu extends AbstractContainerMenu {
 
     @Override
     public boolean stillValid(Player player) {
-        return access.evaluate((level, pos) ->
-                player.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5) <= 64.0, true);
+        return stillValid(access, player, ModBlocks.CHEF_COUNTER.get());
     }
 }
