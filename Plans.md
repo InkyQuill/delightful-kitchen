@@ -38,3 +38,11 @@ G C G
 B W B , где B - Brick, K - Kitchen Counter, W - Wooden Bowl, G - Glass Bottle, C - Chest
 
 Fuel Provider - автоматически передаёт топливо в любые блоки, которым нужно топливо - в том числе и в стандартную плиту CfB, если она требует топливо (то есть, там нет адаптера для электричества)
+
+## Next Milestones
+
+- Chef's Counter recipe book UI and details panel.
+- Confirmation and station queue execution.
+- Standalone station interfaces and removal of Cooking for Blockheads APIs.
+- Persistent Kitchen Floor camouflage.
+- Curios pouch.
