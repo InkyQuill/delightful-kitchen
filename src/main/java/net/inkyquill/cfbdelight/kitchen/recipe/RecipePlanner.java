@@ -58,7 +58,7 @@ public final class RecipePlanner {
         }
 
         Set<String> nextVisiting = withVisited(visiting, targetKey);
-        IntermediateAttempt intermediateAttempt = planIngredients(target, snapshot, depth, nextVisiting, 0,
+        IntermediateAttempt intermediateAttempt = planIngredients(target, snapshot, depth, nextVisiting,
                 List.of(), false);
         if (intermediateAttempt.plan().isPresent() && blockers.isEmpty()) {
             return intermediateAttempt.plan().orElseThrow();
@@ -75,13 +75,13 @@ public final class RecipePlanner {
     }
 
     private IntermediateAttempt planIngredients(PlannedRecipe target, KitchenInventorySnapshot working, int depth,
-                                                Set<String> visiting, int ingredientIndex,
-                                                List<PlannedRecipe> steps, boolean usedIntermediate) {
-        if (ingredientIndex >= target.ingredients().size()) {
-            EnumSet<PlanningBlocker> blockers = baseBlockers(target, working);
-            Optional<List<ItemStack>> extraMatches = IngredientMatcher.findMatches(working, requiredExtras(target));
-            if (extraMatches.isPresent() && blockers.isEmpty()) {
-                KitchenInventorySnapshot completed = working.withConsumed(extraMatches.orElseThrow());
+                                                Set<String> visiting, List<PlannedRecipe> steps,
+                                                boolean usedIntermediate) {
+        EnumSet<PlanningBlocker> blockers = baseBlockers(target, working);
+        Optional<List<ItemStack>> targetMatches = IngredientMatcher.findMatches(working, requiredIngredients(target));
+        if (targetMatches.isPresent()) {
+            if (blockers.isEmpty()) {
+                KitchenInventorySnapshot completed = working.withConsumed(targetMatches.orElseThrow());
                 List<PlannedRecipe> completedSteps = appendStep(steps, target);
                 return IntermediateAttempt.success(new PlanAttempt(
                         target,
@@ -91,45 +91,75 @@ public final class RecipePlanner {
                         EnumSet.noneOf(PlanningBlocker.class)
                 ));
             }
-
-            if (blockers.isEmpty()) {
-                blockers.add(PlanningBlocker.MISSING_RAW_INGREDIENT);
-            }
             return IntermediateAttempt.blocked(appendStep(steps, target), blockers);
         }
 
-        PlannedIngredient ingredient = target.ingredients().get(ingredientIndex);
-        Optional<List<ItemStack>> ingredientMatches = IngredientMatcher.findMatches(working, List.of(ingredient));
-        if (ingredientMatches.isPresent()) {
-            return planIngredients(target, working.withConsumed(ingredientMatches.orElseThrow()), depth, visiting,
-                    ingredientIndex + 1, steps, usedIntermediate);
+        Optional<List<ItemStack>> ingredientMatches = IngredientMatcher.findMatches(working, target.ingredients());
+        if (ingredientMatches.isPresent() && !blockers.isEmpty()) {
+            return IntermediateAttempt.blocked(appendStep(steps, target), blockers);
         }
 
         if (depth >= MAX_DEPTH) {
-            EnumSet<PlanningBlocker> blockers = EnumSet.of(PlanningBlocker.MISSING_RAW_INGREDIENT);
+            blockers.add(PlanningBlocker.MISSING_RAW_INGREDIENT);
             return IntermediateAttempt.blocked(appendStep(steps, target), blockers);
         }
 
-        return craftIntermediateFor(target, ingredient, working, depth, visiting, ingredientIndex, steps);
+        IntermediateAttempt intermediateAttempt = craftIntermediateForAny(target, working, depth, visiting, steps);
+        if (intermediateAttempt.plan().isPresent()) {
+            return intermediateAttempt;
+        }
+
+        blockers.addAll(intermediateAttempt.blockers());
+        List<PlannedRecipe> attemptedSteps = intermediateAttempt.steps().isEmpty()
+                ? appendStep(steps, target)
+                : intermediateAttempt.steps();
+        return IntermediateAttempt.blocked(attemptedSteps, blockers);
+    }
+
+    private IntermediateAttempt craftIntermediateForAny(PlannedRecipe target, KitchenInventorySnapshot working,
+                                                        int depth, Set<String> visiting,
+                                                        List<PlannedRecipe> steps) {
+        CandidateIngredients candidates = candidateIngredients(target, working);
+        EnumSet<PlanningBlocker> blockers = EnumSet.noneOf(PlanningBlocker.class);
+        List<PlannedRecipe> attemptedSteps = new ArrayList<>();
+        boolean triedProducer = false;
+
+        for (PlannedIngredient ingredient : candidates.ingredients()) {
+            List<PlannedRecipe> producers = intermediateProducers(ingredient);
+            if (producers.isEmpty()) {
+                continue;
+            }
+
+            triedProducer = true;
+            IntermediateAttempt attempt = craftIntermediateFor(target, ingredient, producers, working, depth, visiting,
+                    steps);
+            if (attempt.plan().isPresent()) {
+                return attempt;
+            }
+            blockers.addAll(attempt.blockers());
+            rememberFirstFailedBranch(attemptedSteps, attempt.steps());
+        }
+
+        if (!triedProducer && blockers.isEmpty()) {
+            blockers.add(candidates.hasMissingIngredient()
+                    ? PlanningBlocker.MISSING_INTERMEDIATE_RECIPE
+                    : PlanningBlocker.MISSING_RAW_INGREDIENT);
+        }
+        return IntermediateAttempt.blocked(attemptedSteps, blockers);
     }
 
     private IntermediateAttempt craftIntermediateFor(PlannedRecipe target, PlannedIngredient ingredient,
-                                                     KitchenInventorySnapshot working, int depth,
-                                                     Set<String> visiting, int ingredientIndex,
-                                                     List<PlannedRecipe> steps) {
+                                                     List<PlannedRecipe> producers, KitchenInventorySnapshot working,
+                                                     int depth, Set<String> visiting, List<PlannedRecipe> steps) {
         EnumSet<PlanningBlocker> blockers = EnumSet.noneOf(PlanningBlocker.class);
         List<PlannedRecipe> attemptedSteps = new ArrayList<>();
-        for (PlannedRecipe candidate : intermediateProducers(ingredient)) {
+        for (PlannedRecipe candidate : producers) {
             PlanAttempt candidatePlan = plan(candidate, working, depth + 1, visiting);
             if (candidatePlan.state() != PlanState.BLOCKED) {
-                Optional<List<ItemStack>> craftedMatches = IngredientMatcher.findMatches(candidatePlan.snapshot(),
-                        List.of(ingredient));
-                if (craftedMatches.isPresent()) {
+                if (countMatchingItems(candidatePlan.snapshot(), ingredient) > countMatchingItems(working, ingredient)) {
                     List<PlannedRecipe> nextSteps = appendSteps(steps, candidatePlan.steps());
-                    KitchenInventorySnapshot nextWorking = candidatePlan.snapshot()
-                            .withConsumed(craftedMatches.orElseThrow());
-                    IntermediateAttempt continuation = planIngredients(target, nextWorking, depth + 1, visiting,
-                            ingredientIndex + 1, nextSteps, true);
+                    IntermediateAttempt continuation = planIngredients(target, candidatePlan.snapshot(), depth,
+                            visiting, nextSteps, true);
                     if (continuation.plan().isPresent()) {
                         return continuation;
                     }
@@ -149,6 +179,26 @@ public final class RecipePlanner {
             blockers.add(PlanningBlocker.MISSING_INTERMEDIATE_RECIPE);
         }
         return IntermediateAttempt.blocked(attemptedSteps, blockers);
+    }
+
+    private static CandidateIngredients candidateIngredients(PlannedRecipe target, KitchenInventorySnapshot working) {
+        List<PlannedIngredient> missingIngredients = target.ingredients().stream()
+                .filter(ingredient -> IngredientMatcher.findMatches(working, List.of(ingredient)).isEmpty())
+                .toList();
+        if (!missingIngredients.isEmpty()) {
+            return new CandidateIngredients(missingIngredients, true);
+        }
+        return new CandidateIngredients(target.ingredients(), false);
+    }
+
+    private static int countMatchingItems(KitchenInventorySnapshot snapshot, PlannedIngredient ingredient) {
+        int count = 0;
+        for (ItemStack stack : snapshot.stacks()) {
+            if (ingredient.ingredient().test(stack)) {
+                count += stack.getCount();
+            }
+        }
+        return count;
     }
 
     private List<PlannedRecipe> intermediateProducers(PlannedIngredient ingredient) {
@@ -310,6 +360,12 @@ public final class RecipePlanner {
         @Override
         public EnumSet<PlanningBlocker> blockers() {
             return blockers.clone();
+        }
+    }
+
+    private record CandidateIngredients(List<PlannedIngredient> ingredients, boolean hasMissingIngredient) {
+        private CandidateIngredients {
+            ingredients = List.copyOf(Objects.requireNonNull(ingredients, "ingredients"));
         }
     }
 }
