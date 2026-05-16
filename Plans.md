@@ -43,6 +43,7 @@ Fuel Provider - автоматически передаёт топливо в л
 
 - Chef's Counter recipe book UI and details panel.
 - Confirmation and station queue execution.
+- Capacity-aware station planning for busy queues and blocked outputs.
 - Standalone station interfaces and removal of Cooking for Blockheads APIs.
 - Persistent Kitchen Floor camouflage.
 - Curios pouch.
