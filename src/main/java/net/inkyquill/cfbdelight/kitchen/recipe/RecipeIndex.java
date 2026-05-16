@@ -5,12 +5,13 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeManager;
 
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 public final class RecipeIndex {
     private final List<PlannedRecipe> recipes;
@@ -22,13 +23,17 @@ public final class RecipeIndex {
                 .sorted(Comparator.comparing(recipe -> recipe.id().toString()))
                 .toList();
         this.edibleOutputs = this.recipes.stream()
-                .filter(recipe -> isEdible(recipe.primaryOutput()))
+                .filter(recipe -> recipe.outputs().stream().anyMatch(RecipeIndex::isEdible))
                 .toList();
-        this.recipesByOutputKey = Map.copyOf(this.recipes.stream()
-                .collect(Collectors.groupingBy(
-                        recipe -> stackKey(recipe.primaryOutput()),
-                        Collectors.collectingAndThen(Collectors.toList(), List::copyOf)
-                )));
+
+        Map<String, List<PlannedRecipe>> recipesByOutputKey = new LinkedHashMap<>();
+        for (PlannedRecipe recipe : this.recipes) {
+            for (ItemStack output : recipe.outputs()) {
+                recipesByOutputKey.computeIfAbsent(stackKey(output), key -> new ArrayList<>()).add(recipe);
+            }
+        }
+        recipesByOutputKey.replaceAll((key, value) -> List.copyOf(value));
+        this.recipesByOutputKey = Map.copyOf(recipesByOutputKey);
     }
 
     public static RecipeIndex build(RecipeManager recipeManager, HolderLookup.Provider registries) {
