@@ -1,10 +1,10 @@
 package net.inkyquill.cfbdelight.block.entity;
 
 import net.inkyquill.cfbdelight.block.ModBlocks;
-import net.inkyquill.cfbdelight.kitchen.KitchenInventoryEndpoint;
 import net.inkyquill.cfbdelight.kitchen.KitchenInventoryService;
 import net.inkyquill.cfbdelight.kitchen.KitchenInventoryView;
 import net.inkyquill.cfbdelight.kitchen.KitchenScanner;
+import net.inkyquill.cfbdelight.kitchen.KitchenServices;
 import net.inkyquill.cfbdelight.menu.CabinetOfHoldingMenu;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
@@ -22,10 +22,7 @@ import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.neoforged.neoforge.capabilities.Capabilities;
 import org.jetbrains.annotations.Nullable;
-
-import java.util.ArrayList;
 
 /**
  * Block entity for the Cabinet of Holding.
@@ -107,24 +104,7 @@ public class CabinetOfHoldingBlockEntity extends BlockEntity
     public AbstractContainerMenu createMenu(int id, Inventory playerInventory, Player player) {
         if (level != null && level.getBlockState(worldPosition.below()).is(ModBlocks.KITCHEN_FLOOR.get())) {
             var scan = KitchenScanner.scan(level, worldPosition);
-            var endpoints = new ArrayList<KitchenInventoryEndpoint>();
-            for (BlockPos member : scan.memberBlocks()) {
-                if (member.equals(worldPosition)) {
-                    continue;
-                }
-                BlockEntity blockEntity = level.getBlockEntity(member);
-                if (KitchenScanner.isKitchenStation(blockEntity)) {
-                    continue;
-                }
-                if (blockEntity instanceof Container container) {
-                    endpoints.add(new KitchenInventoryEndpoint(member, container));
-                    continue;
-                }
-                var itemHandler = level.getCapability(Capabilities.ItemHandler.BLOCK, member, null);
-                if (itemHandler != null) {
-                    endpoints.add(new KitchenInventoryEndpoint(member, itemHandler));
-                }
-            }
+            var endpoints = KitchenServices.inventoryEndpoints(level, scan, worldPosition);
 
             if (!endpoints.isEmpty()) {
                 var service = new KitchenInventoryService(endpoints);

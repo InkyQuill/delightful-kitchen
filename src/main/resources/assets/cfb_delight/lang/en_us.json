@@ -16,6 +16,10 @@
   "container.cfb_delight.chef_counter.status_unlinked": "Kitchen scanner not connected.",
   "gui.cfb_delight.chef_counter.floor_tiles": "Floor tiles: %s",
   "gui.cfb_delight.chef_counter.members": "Inventory blocks: %s",
+  "gui.cfb_delight.chef_counter.recipes": "Foods indexed: %s",
+  "gui.cfb_delight.chef_counter.ready": "Ready: %s",
+  "gui.cfb_delight.chef_counter.intermediates": "Intermediate: %s",
+  "gui.cfb_delight.chef_counter.blocked": "Blocked: %s",
   "gui.cfb_delight.chef_counter.multiple_counters": "Multiple Chef's Counters share this floor.",
 
   "block.cfb_delight.fuel_provider": "Fuel Provider",
