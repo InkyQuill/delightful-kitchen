@@ -131,6 +131,14 @@ dependencies {
     compileOnly files("../RoughlyEnoughItems/api/build/loom-cache/remapped_working/loom_mappings_1_21_layered_hash_1934350348_v2.me.shedaniel.cloth-basic-math-0.6.1.jar")
     compileOnly files("../RoughlyEnoughItems/neoforge/build/loom-cache/remapped_working/loom_mappings_1_21_layered_hash_1934350348_v2_neoforge_21_0_167_forge.dev.architectury-architectury-neoforge-13.0.6.jar")
     // localRuntime files("../RoughlyEnoughItems/neoforge/build/libs/RoughlyEnoughItems-16.0.9999.jar")
+
+    testImplementation "org.junit.jupiter:junit-jupiter-api:5.11.3"
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:5.11.3"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+}
+
+tasks.named('test', Test).configure {
+    useJUnitPlatform()
 }
 
 // This block of code expands all declared replace properties in the specified resource targets.
