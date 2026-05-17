@@ -99,9 +99,6 @@ public class FreezerBlockEntity extends BlockEntity
     }
 
     public static void serverTick(Level level, BlockPos pos, BlockState state, FreezerBlockEntity be) {
-        if (level.isClientSide()) {
-            return;
-        }
         if (be.passiveMode == PassiveMode.PAUSED) {
             be.setActive(level, pos, state, false);
             return;
@@ -150,12 +147,6 @@ public class FreezerBlockEntity extends BlockEntity
             be.advancePassiveProgress();
         }
         be.syncActiveBlockState(level, pos, state);
-    }
-
-    void tickPassiveProduction(KitchenUtilityService utility) {
-        tickPassiveProduction(utility, stack -> {
-            throw new IllegalStateException("Unreleased freezer container remainder: " + stack);
-        });
     }
 
     void tickPassiveProduction(KitchenUtilityService utility, Consumer<ItemStack> unreleasedContainerHandler) {

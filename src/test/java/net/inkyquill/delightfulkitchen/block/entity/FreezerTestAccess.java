@@ -18,10 +18,6 @@ public final class FreezerTestAccess {
         return new FreezerBlockEntity(BlockEntityType.CHEST, BlockPos.ZERO, Blocks.CHEST.defaultBlockState());
     }
 
-    public static void tickWithUtility(FreezerBlockEntity freezer, KitchenUtilityService service) {
-        freezer.tickPassiveProduction(service);
-    }
-
     public static void tickWithUtility(FreezerBlockEntity freezer, KitchenUtilityService service,
                                        Consumer<ItemStack> unreleasedContainerHandler) {
         freezer.tickPassiveProduction(service, unreleasedContainerHandler);
