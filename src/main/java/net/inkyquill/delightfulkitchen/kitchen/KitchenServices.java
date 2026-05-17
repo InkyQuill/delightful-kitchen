@@ -4,6 +4,9 @@ import net.inkyquill.delightfulkitchen.block.entity.AutoCutterBlockEntity;
 import net.inkyquill.delightfulkitchen.block.entity.GrillBlockEntity;
 import net.inkyquill.delightfulkitchen.block.entity.PotStandBlockEntity;
 import net.inkyquill.delightfulkitchen.kitchen.recipe.KitchenStationType;
+import net.inkyquill.delightfulkitchen.kitchen.station.KitchenStation;
+import net.inkyquill.delightfulkitchen.kitchen.station.KitchenStationEndpoint;
+import net.inkyquill.delightfulkitchen.kitchen.station.KitchenStationService;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.Container;
 import net.minecraft.world.level.Level;
@@ -41,6 +44,17 @@ public final class KitchenServices {
             }
         }
         return List.copyOf(endpoints);
+    }
+
+    public static KitchenStationService stationService(Level level, KitchenScanResult scan) {
+        List<KitchenStationEndpoint> endpoints = new ArrayList<>();
+        for (BlockPos member : scan.memberBlocks()) {
+            BlockEntity blockEntity = level.getBlockEntity(member);
+            if (blockEntity instanceof KitchenStation station) {
+                endpoints.add(new KitchenStationEndpoint(member, station));
+            }
+        }
+        return new KitchenStationService(endpoints);
     }
 
     public static EnumSet<KitchenStationType> stationTypes(Level level, KitchenScanResult scan) {
