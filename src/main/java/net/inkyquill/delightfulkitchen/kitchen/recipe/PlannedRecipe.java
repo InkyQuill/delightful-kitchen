@@ -1,5 +1,6 @@
 package net.inkyquill.delightfulkitchen.kitchen.recipe;
 
+import net.inkyquill.delightfulkitchen.kitchen.utility.KitchenUtilityRequirement;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 
@@ -14,6 +15,7 @@ public record PlannedRecipe(
         KitchenStationType stationType,
         Optional<ItemStack> servingContainer,
         Optional<PlannedIngredient> fuel,
+        KitchenUtilityRequirement utilityRequirement,
         int processingTime,
         boolean asynchronous
 ) {
@@ -28,6 +30,7 @@ public record PlannedRecipe(
         stationType = Objects.requireNonNull(stationType, "stationType");
         servingContainer = Objects.requireNonNull(servingContainer, "servingContainer").map(ItemStack::copy);
         fuel = Objects.requireNonNull(fuel, "fuel");
+        utilityRequirement = Objects.requireNonNull(utilityRequirement, "utilityRequirement");
         if (outputs.isEmpty()) {
             throw new IllegalArgumentException("planned recipe must have a non-empty output");
         }

@@ -4,6 +4,7 @@ import net.inkyquill.delightfulkitchen.kitchen.recipe.KitchenRecipeAdapter;
 import net.inkyquill.delightfulkitchen.kitchen.recipe.KitchenStationType;
 import net.inkyquill.delightfulkitchen.kitchen.recipe.PlannedIngredient;
 import net.inkyquill.delightfulkitchen.kitchen.recipe.PlannedRecipe;
+import net.inkyquill.delightfulkitchen.kitchen.utility.KitchenUtilityRequirement;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
@@ -29,6 +30,6 @@ public final class CampfireCookingAdapter implements KitchenRecipeAdapter<Campfi
 
         return Optional.of(new PlannedRecipe(id, List.of(new PlannedIngredient(recipe.getIngredients().getFirst(), 1)),
                 List.of(output), KitchenStationType.GRILL, Optional.empty(), FuelRequirements.furnaceFuel(),
-                recipe.getCookingTime(), true));
+                KitchenUtilityRequirement.NONE, recipe.getCookingTime(), true));
     }
 }

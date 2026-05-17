@@ -1,5 +1,6 @@
 package net.inkyquill.delightfulkitchen.kitchen.recipe;
 
+import net.inkyquill.delightfulkitchen.kitchen.utility.KitchenUtilityRequirement;
 import net.minecraft.SharedConstants;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.Bootstrap;
@@ -77,6 +78,7 @@ class RecipePlannerTest {
                 stationType,
                 Optional.empty(),
                 Optional.empty(),
+                KitchenUtilityRequirement.NONE,
                 0,
                 false
         );

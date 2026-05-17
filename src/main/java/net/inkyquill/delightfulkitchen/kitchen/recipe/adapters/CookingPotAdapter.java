@@ -4,6 +4,7 @@ import net.inkyquill.delightfulkitchen.kitchen.recipe.KitchenRecipeAdapter;
 import net.inkyquill.delightfulkitchen.kitchen.recipe.KitchenStationType;
 import net.inkyquill.delightfulkitchen.kitchen.recipe.PlannedIngredient;
 import net.inkyquill.delightfulkitchen.kitchen.recipe.PlannedRecipe;
+import net.inkyquill.delightfulkitchen.kitchen.utility.KitchenUtilityRequirement;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
@@ -35,6 +36,6 @@ public final class CookingPotAdapter implements KitchenRecipeAdapter<CookingPotR
                 .filter(stack -> !stack.isEmpty())
                 .map(ItemStack::copy);
         return Optional.of(new PlannedRecipe(id, ingredients, List.of(output), KitchenStationType.COOKING_POT,
-                container, FuelRequirements.furnaceFuel(), recipe.getCookTime(), true));
+                container, FuelRequirements.furnaceFuel(), KitchenUtilityRequirement.NONE, recipe.getCookTime(), true));
     }
 }

@@ -1,6 +1,9 @@
 package net.inkyquill.delightfulkitchen.kitchen.recipe;
 
+import net.inkyquill.delightfulkitchen.kitchen.utility.KitchenUtilityRequirement;
+import net.inkyquill.delightfulkitchen.kitchen.utility.KitchenUtilityService;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.Ingredient;
 
 import java.util.ArrayList;
@@ -21,10 +24,22 @@ public final class RecipePlanner {
 
     private final RecipeIndex recipeIndex;
     private final Set<KitchenStationType> availableStations;
+    private final Optional<KitchenUtilityService> utilityService;
 
     public RecipePlanner(RecipeIndex recipeIndex, Set<KitchenStationType> availableStations) {
+        this(recipeIndex, availableStations, Optional.empty());
+    }
+
+    public RecipePlanner(RecipeIndex recipeIndex, Set<KitchenStationType> availableStations,
+                         KitchenUtilityService utilityService) {
+        this(recipeIndex, availableStations, Optional.of(Objects.requireNonNull(utilityService, "utilityService")));
+    }
+
+    private RecipePlanner(RecipeIndex recipeIndex, Set<KitchenStationType> availableStations,
+                          Optional<KitchenUtilityService> utilityService) {
         this.recipeIndex = Objects.requireNonNull(recipeIndex, "recipeIndex");
         this.availableStations = Set.copyOf(Objects.requireNonNull(availableStations, "availableStations"));
+        this.utilityService = Objects.requireNonNull(utilityService, "utilityService");
     }
 
     public List<RecipePlan> planAllEdible(KitchenInventorySnapshot snapshot) {
@@ -49,6 +64,10 @@ public final class RecipePlanner {
         Optional<List<ItemStack>> directMatches = IngredientMatcher.findMatches(snapshot, requiredIngredients(target));
         if (directMatches.isPresent() && blockers.isEmpty()) {
             return PlanAttempt.ready(target, snapshot.withConsumed(directMatches.orElseThrow()));
+        }
+        Optional<PlanAttempt> utilityAttempt = planWithUtility(target, snapshot, blockers, List.of(), false);
+        if (utilityAttempt.isPresent()) {
+            return utilityAttempt.orElseThrow();
         }
 
         String targetKey = target.id().toString();
@@ -92,6 +111,14 @@ public final class RecipePlanner {
                 ));
             }
             return IntermediateAttempt.blocked(appendStep(steps, target), blockers);
+        }
+        Optional<PlanAttempt> utilityAttempt = planWithUtility(target, working, blockers, steps, usedIntermediate);
+        if (utilityAttempt.isPresent()) {
+            PlanAttempt attempt = utilityAttempt.orElseThrow();
+            if (attempt.state() == PlanState.BLOCKED) {
+                return IntermediateAttempt.blocked(attempt.steps(), attempt.blockers());
+            }
+            return IntermediateAttempt.success(attempt);
         }
 
         Optional<List<ItemStack>> ingredientMatches = IngredientMatcher.findMatches(working, target.ingredients());
@@ -250,6 +277,97 @@ public final class RecipePlanner {
         return List.copyOf(ingredients);
     }
 
+    private Optional<PlanAttempt> planWithUtility(PlannedRecipe target, KitchenInventorySnapshot snapshot,
+                                                  EnumSet<PlanningBlocker> baseBlockers, List<PlannedRecipe> steps,
+                                                  boolean usedIntermediate) {
+        Optional<UtilityIngredient> utilityIngredient = missingUtilityIngredient(target, snapshot);
+        if (utilityIngredient.isEmpty()) {
+            return Optional.empty();
+        }
+
+        UtilityIngredient utility = utilityIngredient.orElseThrow();
+        PlannedRecipe utilityStep = withUtilityRequirement(target, utility);
+        EnumSet<PlanningBlocker> blockers = baseBlockers.clone();
+        utilityService.map(service -> service.blockersFor(utility.requirement()))
+                .ifPresent(blockers::addAll);
+        if (!blockers.isEmpty()) {
+            return Optional.of(PlanAttempt.blocked(target, snapshot, appendStep(steps, utilityStep), blockers));
+        }
+
+        Optional<List<ItemStack>> matchesWithoutUtility = IngredientMatcher.findMatches(snapshot,
+                requiredIngredients(utilityStep));
+        if (matchesWithoutUtility.isEmpty()) {
+            return Optional.empty();
+        }
+
+        KitchenInventorySnapshot completed = snapshot.withConsumed(matchesWithoutUtility.orElseThrow());
+        List<PlannedRecipe> completedSteps = appendStep(steps, utilityStep);
+        return Optional.of(new PlanAttempt(
+                target,
+                completed.withAdded(target.outputs()),
+                usedIntermediate ? PlanState.CRAFTABLE_WITH_INTERMEDIATES : PlanState.READY,
+                completedSteps,
+                EnumSet.noneOf(PlanningBlocker.class)
+        ));
+    }
+
+    private Optional<UtilityIngredient> missingUtilityIngredient(PlannedRecipe target, KitchenInventorySnapshot snapshot) {
+        if (utilityService.isEmpty()
+                || target.stationType() != KitchenStationType.CRAFTING
+                || target.utilityRequirement() != KitchenUtilityRequirement.NONE) {
+            return Optional.empty();
+        }
+
+        for (PlannedIngredient ingredient : target.ingredients()) {
+            if (IngredientMatcher.findMatches(snapshot, List.of(ingredient)).isPresent()) {
+                continue;
+            }
+            Optional<KitchenUtilityRequirement> requirement = utilityRequirementFor(ingredient);
+            if (requirement.isPresent()) {
+                return Optional.of(new UtilityIngredient(ingredient, requirement.orElseThrow()));
+            }
+        }
+        return Optional.empty();
+    }
+
+    private static Optional<KitchenUtilityRequirement> utilityRequirementFor(PlannedIngredient ingredient) {
+        if (ingredient.count() != 1) {
+            return Optional.empty();
+        }
+        ItemStack[] displayStacks = ingredient.ingredient().getItems();
+        if (displayStacks.length != 1) {
+            return Optional.empty();
+        }
+
+        ItemStack stack = displayStacks[0];
+        if (stack.is(Items.WATER_BUCKET)) {
+            return Optional.of(KitchenUtilityRequirement.WATER);
+        }
+        if (stack.is(Items.ICE)) {
+            return Optional.of(KitchenUtilityRequirement.ICE);
+        }
+        if (stack.is(Items.SNOWBALL)) {
+            return Optional.of(KitchenUtilityRequirement.SNOWBALL);
+        }
+        return Optional.empty();
+    }
+
+    private static PlannedRecipe withUtilityRequirement(PlannedRecipe target, UtilityIngredient utility) {
+        List<PlannedIngredient> ingredients = new ArrayList<>(target.ingredients());
+        ingredients.remove(utility.ingredient());
+        return new PlannedRecipe(
+                target.id(),
+                ingredients,
+                target.outputs(),
+                target.stationType(),
+                target.servingContainer(),
+                target.fuel(),
+                utility.requirement(),
+                target.processingTime(),
+                target.asynchronous()
+        );
+    }
+
     private static List<PlannedIngredient> requiredExtras(PlannedRecipe target) {
         List<PlannedIngredient> extras = new ArrayList<>();
         target.servingContainer().map(RecipePlanner::servingContainerIngredient).ifPresent(extras::add);
@@ -373,6 +491,13 @@ public final class RecipePlanner {
     private record CandidateIngredients(List<PlannedIngredient> ingredients, boolean hasMissingIngredient) {
         private CandidateIngredients {
             ingredients = List.copyOf(Objects.requireNonNull(ingredients, "ingredients"));
+        }
+    }
+
+    private record UtilityIngredient(PlannedIngredient ingredient, KitchenUtilityRequirement requirement) {
+        private UtilityIngredient {
+            ingredient = Objects.requireNonNull(ingredient, "ingredient");
+            requirement = Objects.requireNonNull(requirement, "requirement");
         }
     }
 }

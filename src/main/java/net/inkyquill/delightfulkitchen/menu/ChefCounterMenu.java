@@ -13,6 +13,7 @@ import net.inkyquill.delightfulkitchen.kitchen.recipe.PlanningBlocker;
 import net.inkyquill.delightfulkitchen.kitchen.recipe.RecipeIndex;
 import net.inkyquill.delightfulkitchen.kitchen.recipe.RecipePlan;
 import net.inkyquill.delightfulkitchen.kitchen.recipe.RecipePlanner;
+import net.inkyquill.delightfulkitchen.kitchen.utility.KitchenUtilityService;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.entity.player.Inventory;
@@ -92,7 +93,8 @@ public class ChefCounterMenu extends AbstractContainerMenu {
 
         var inventory = new KitchenInventoryService(endpoints);
         var recipeIndex = RecipeIndex.build(level.getRecipeManager(), level.registryAccess());
-        var planner = new RecipePlanner(recipeIndex, KitchenServices.stationTypes(level, scan));
+        var planner = new RecipePlanner(recipeIndex, KitchenServices.stationTypes(level, scan),
+                new KitchenUtilityService(scan, inventory));
         List<RecipePlan> plans = planner.planAllEdible(inventory.snapshot());
 
         data.set(DATA_RECIPE_COUNT, plans.size());

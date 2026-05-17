@@ -4,6 +4,7 @@ import net.inkyquill.delightfulkitchen.kitchen.recipe.KitchenRecipeAdapter;
 import net.inkyquill.delightfulkitchen.kitchen.recipe.KitchenStationType;
 import net.inkyquill.delightfulkitchen.kitchen.recipe.PlannedIngredient;
 import net.inkyquill.delightfulkitchen.kitchen.recipe.PlannedRecipe;
+import net.inkyquill.delightfulkitchen.kitchen.utility.KitchenUtilityRequirement;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
@@ -32,6 +33,6 @@ public final class CuttingBoardAdapter implements KitchenRecipeAdapter<CuttingBo
 
         List<PlannedIngredient> ingredients = List.of(new PlannedIngredient(recipe.getIngredients().getFirst(), 1));
         return Optional.of(new PlannedRecipe(id, ingredients, outputs, KitchenStationType.CUTTING_BOARD,
-                Optional.empty(), Optional.empty(), 100, true));
+                Optional.empty(), Optional.empty(), KitchenUtilityRequirement.NONE, 100, true));
     }
 }

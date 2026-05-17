@@ -4,6 +4,7 @@ import net.inkyquill.delightfulkitchen.kitchen.recipe.KitchenRecipeAdapter;
 import net.inkyquill.delightfulkitchen.kitchen.recipe.KitchenStationType;
 import net.inkyquill.delightfulkitchen.kitchen.recipe.PlannedIngredient;
 import net.inkyquill.delightfulkitchen.kitchen.recipe.PlannedRecipe;
+import net.inkyquill.delightfulkitchen.kitchen.utility.KitchenUtilityRequirement;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
@@ -32,6 +33,6 @@ public final class ShapedCraftingAdapter implements KitchenRecipeAdapter<ShapedR
                 .toList();
 
         return Optional.of(new PlannedRecipe(id, ingredients, List.of(output), KitchenStationType.CRAFTING,
-                Optional.empty(), Optional.empty(), 0, false));
+                Optional.empty(), Optional.empty(), KitchenUtilityRequirement.NONE, 0, false));
     }
 }

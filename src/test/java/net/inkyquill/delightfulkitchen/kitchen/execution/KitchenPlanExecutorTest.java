@@ -16,6 +16,7 @@ import net.inkyquill.delightfulkitchen.kitchen.station.KitchenStationEndpoint;
 import net.inkyquill.delightfulkitchen.kitchen.station.KitchenStationJob;
 import net.inkyquill.delightfulkitchen.kitchen.station.KitchenStationService;
 import net.inkyquill.delightfulkitchen.kitchen.station.KitchenStationStatus;
+import net.inkyquill.delightfulkitchen.kitchen.utility.KitchenUtilityRequirement;
 import net.minecraft.SharedConstants;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
@@ -305,14 +306,15 @@ class KitchenPlanExecutorTest {
     private static PlannedRecipe recipe(String path, KitchenStationType stationType,
                                         List<PlannedIngredient> ingredients, List<ItemStack> outputs) {
         return new PlannedRecipe(id(path), ingredients, outputs, stationType,
-                Optional.empty(), Optional.empty(), 20, stationType != KitchenStationType.CRAFTING);
+                Optional.empty(), Optional.empty(), KitchenUtilityRequirement.NONE, 20,
+                stationType != KitchenStationType.CRAFTING);
     }
 
     private static PlannedRecipe recipeWithFuel(String path, KitchenStationType stationType,
                                                 List<PlannedIngredient> ingredients, List<ItemStack> outputs,
                                                 PlannedIngredient fuel) {
         return new PlannedRecipe(id(path), ingredients, outputs, stationType,
-                Optional.empty(), Optional.of(fuel), 20, true);
+                Optional.empty(), Optional.of(fuel), KitchenUtilityRequirement.NONE, 20, true);
     }
 
     private static PlannedIngredient ingredient(ItemLike item, int count) {
