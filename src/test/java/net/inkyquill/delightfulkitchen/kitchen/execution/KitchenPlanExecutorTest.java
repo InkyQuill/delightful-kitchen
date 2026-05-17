@@ -3,6 +3,7 @@ package net.inkyquill.delightfulkitchen.kitchen.execution;
 import net.inkyquill.delightfulkitchen.kitchen.KitchenInventoryEndpoint;
 import net.inkyquill.delightfulkitchen.kitchen.KitchenInventoryService;
 import net.inkyquill.delightfulkitchen.kitchen.KitchenScanResult;
+import net.inkyquill.delightfulkitchen.kitchen.recipe.KitchenInventorySnapshot;
 import net.inkyquill.delightfulkitchen.kitchen.recipe.KitchenStationType;
 import net.inkyquill.delightfulkitchen.kitchen.recipe.PlanState;
 import net.inkyquill.delightfulkitchen.kitchen.recipe.PlannedIngredient;
@@ -37,6 +38,7 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class KitchenPlanExecutorTest {
@@ -80,6 +82,53 @@ class KitchenPlanExecutorTest {
         assertFalse(result.queued());
         assertTrue(result.blockers().contains(PlanningBlocker.KITCHEN_CHANGED));
         assertEquals(1, source.getItem(0).getCount());
+        assertEquals(0, station.acceptedJobCount());
+    }
+
+    @Test
+    void returnsKitchenChangedWhenFingerprintItemIdentityDiffers() {
+        SimpleContainer source = new SimpleContainer(new ItemStack(Items.BEEF), ItemStack.EMPTY);
+        FakeStation station = new FakeStation(KitchenStationType.GRILL, 1, 0);
+        KitchenInventoryService inventory = inventory(source);
+        KitchenScanResult scan = scan();
+        RecipePlan plan = plan(recipe("grilled_beef", KitchenStationType.GRILL,
+                List.of(ingredient(Items.BEEF, 1)), List.of(new ItemStack(Items.COOKED_BEEF))));
+        KitchenPlanFingerprint appleFingerprint = KitchenPlanFingerprint.of(scan,
+                new KitchenInventorySnapshot(List.of(new ItemStack(Items.APPLE))));
+
+        KitchenPlanExecutionResult result = executor(inventory, station, scan).confirm(plan, appleFingerprint);
+
+        assertFalse(result.queued());
+        assertTrue(result.blockers().contains(PlanningBlocker.KITCHEN_CHANGED));
+        assertEquals(1, source.getItem(0).getCount());
+        assertEquals(0, station.acceptedJobCount());
+    }
+
+    @Test
+    void doesNotExtractWhenCombinedStationOutputsDoNotFit() {
+        SimpleContainer source = new SimpleContainer(
+                new ItemStack(Items.BEEF),
+                new ItemStack(Items.CHICKEN),
+                ItemStack.EMPTY
+        );
+        FakeStation station = new FakeStation(KitchenStationType.GRILL, 2, 0);
+        KitchenInventoryService inventory = inventory(source);
+        KitchenScanResult scan = scan();
+        RecipePlan plan = plan(
+                recipe("grilled_beef", KitchenStationType.GRILL,
+                        List.of(ingredient(Items.BEEF, 1)), List.of(new ItemStack(Items.COOKED_BEEF))),
+                recipe("grilled_chicken", KitchenStationType.GRILL,
+                        List.of(ingredient(Items.CHICKEN, 1)), List.of(new ItemStack(Items.COOKED_CHICKEN)))
+        );
+
+        KitchenPlanExecutionResult result = executor(inventory, station, scan)
+                .confirm(plan, KitchenPlanFingerprint.of(scan, inventory.snapshot()));
+
+        assertFalse(result.queued());
+        assertTrue(result.blockers().contains(PlanningBlocker.OUTPUT_STORAGE_FULL));
+        assertEquals(1, source.getItem(0).getCount());
+        assertEquals(1, source.getItem(1).getCount());
+        assertTrue(source.getItem(2).isEmpty());
         assertEquals(0, station.acceptedJobCount());
     }
 
@@ -129,7 +178,7 @@ class KitchenPlanExecutorTest {
     void rollsBackInstantCraftingOutputsWhenLaterExtractionFails() {
         SimpleContainer source = new SimpleContainer(
                 new ItemStack(Items.WHEAT, 3),
-                new ItemStack(Items.BREAD, 2),
+                ItemStack.EMPTY,
                 ItemStack.EMPTY,
                 ItemStack.EMPTY
         );
@@ -150,8 +199,61 @@ class KitchenPlanExecutorTest {
         assertFalse(result.queued());
         assertTrue(result.blockers().contains(PlanningBlocker.MISSING_FUEL));
         assertEquals(3, source.getItem(0).getCount());
-        assertEquals(2, source.getItem(1).getCount());
+        assertTrue(source.getItem(1).isEmpty());
         assertEquals(0, station.acceptedJobCount());
+    }
+
+    @Test
+    void throwsWhenInstantCraftingRollbackWouldBeAmbiguous() {
+        SimpleContainer source = new SimpleContainer(
+                new ItemStack(Items.WHEAT, 3),
+                new ItemStack(Items.BREAD, 2),
+                ItemStack.EMPTY,
+                ItemStack.EMPTY
+        );
+        FakeStation station = new FakeStation(KitchenStationType.GRILL, 1, 0);
+        KitchenInventoryService inventory = inventory(source);
+        KitchenScanResult scan = scan();
+        RecipePlan plan = plan(
+                recipe("bread", KitchenStationType.CRAFTING,
+                        List.of(ingredient(Items.WHEAT, 3)), List.of(new ItemStack(Items.BREAD))),
+                recipeWithFuel("grilled_bread", KitchenStationType.GRILL,
+                        List.of(ingredient(Items.BREAD, 1)), List.of(new ItemStack(Items.COOKED_BEEF)),
+                        ingredient(Items.COAL, 1))
+        );
+
+        assertThrows(IllegalStateException.class, () -> executor(inventory, station, scan)
+                .confirm(plan, KitchenPlanFingerprint.of(scan, inventory.snapshot())));
+
+        assertEquals(0, source.getItem(0).getCount());
+        assertEquals(3, source.getItem(1).getCount());
+        assertEquals(0, station.acceptedJobCount());
+    }
+
+    @Test
+    void throwsWhenStationAcceptFailsAfterAnotherJobWasAccepted() {
+        SimpleContainer source = new SimpleContainer(
+                new ItemStack(Items.BEEF),
+                new ItemStack(Items.CHICKEN),
+                ItemStack.EMPTY,
+                ItemStack.EMPTY
+        );
+        FakeStation station = new FakeStation(KitchenStationType.GRILL, 2, 0, 2);
+        KitchenInventoryService inventory = inventory(source);
+        KitchenScanResult scan = scan();
+        RecipePlan plan = plan(
+                recipe("grilled_beef", KitchenStationType.GRILL,
+                        List.of(ingredient(Items.BEEF, 1)), List.of(new ItemStack(Items.COOKED_BEEF))),
+                recipe("grilled_chicken", KitchenStationType.GRILL,
+                        List.of(ingredient(Items.CHICKEN, 1)), List.of(new ItemStack(Items.COOKED_CHICKEN)))
+        );
+
+        assertThrows(IllegalStateException.class, () -> executor(inventory, station, scan)
+                .confirm(plan, KitchenPlanFingerprint.of(scan, inventory.snapshot())));
+
+        assertTrue(source.getItem(0).isEmpty());
+        assertTrue(source.getItem(1).isEmpty());
+        assertEquals(1, station.acceptedJobCount());
     }
 
     private static KitchenPlanExecutor executor(KitchenInventoryService inventory, FakeStation station,
@@ -202,12 +304,19 @@ class KitchenPlanExecutorTest {
         private final KitchenStationType type;
         private final int capacity;
         private final int initialQueued;
+        private final int failingAcceptCall;
         private final List<KitchenStationJob> acceptedJobs = new ArrayList<>();
+        private int acceptCalls;
 
         private FakeStation(KitchenStationType type, int capacity, int initialQueued) {
+            this(type, capacity, initialQueued, 0);
+        }
+
+        private FakeStation(KitchenStationType type, int capacity, int initialQueued, int failingAcceptCall) {
             this.type = type;
             this.capacity = capacity;
             this.initialQueued = initialQueued;
+            this.failingAcceptCall = failingAcceptCall;
         }
 
         @Override
@@ -242,6 +351,10 @@ class KitchenPlanExecutorTest {
 
         @Override
         public KitchenStationAcceptResult accept(KitchenStationJob job) {
+            acceptCalls++;
+            if (acceptCalls == failingAcceptCall) {
+                return KitchenStationAcceptResult.blocked(PlanningBlocker.STATION_QUEUE_FULL);
+            }
             KitchenStationAcceptResult result = canAccept(job);
             if (result.accepted()) {
                 acceptedJobs.add(job);

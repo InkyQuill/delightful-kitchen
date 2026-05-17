@@ -78,8 +78,9 @@ public final class KitchenPlanExecutor {
             KitchenStationJob job = stationJobs.get(index);
             var accepted = endpoints.orElseThrow().get(index).station().accept(job);
             if (!accepted.accepted()) {
-                rollback(extractedJobs);
-                return KitchenPlanExecutionResult.blocked(accepted.blockers());
+                throw new IllegalStateException(
+                        "Station accept failed after validation for " + job.recipeId() + ": " + accepted.blockers()
+                );
             }
         }
 
@@ -89,13 +90,19 @@ public final class KitchenPlanExecutor {
     private EnumSet<PlanningBlocker> validatePlan(RecipePlan plan) {
         EnumSet<PlanningBlocker> blockers = EnumSet.noneOf(PlanningBlocker.class);
         List<KitchenStationJob> stationJobs = new ArrayList<>();
+        List<ItemStack> futureStationOutputs = new ArrayList<>();
         for (PlannedRecipe step : plan.steps()) {
-            if (!inventory.canInsertAll(step.outputs())) {
-                blockers.add(PlanningBlocker.OUTPUT_STORAGE_FULL);
-            }
-            if (step.stationType() != KitchenStationType.CRAFTING) {
+            if (step.stationType() == KitchenStationType.CRAFTING) {
+                if (!inventory.canInsertAll(step.outputs())) {
+                    blockers.add(PlanningBlocker.OUTPUT_STORAGE_FULL);
+                }
+            } else {
                 stationJobs.add(jobWithoutExtractedInputs(step));
+                futureStationOutputs.addAll(step.outputs());
             }
+        }
+        if (!futureStationOutputs.isEmpty() && !inventory.canInsertAll(futureStationOutputs)) {
+            blockers.add(PlanningBlocker.OUTPUT_STORAGE_FULL);
         }
         blockers.addAll(validateStationJobs(stationJobs));
         return blockers;
@@ -233,10 +240,66 @@ public final class KitchenPlanExecutor {
     }
 
     private void rollback(List<ExtractedJob> jobs) {
+        assertNoAmbiguousInstantOutputRollback(jobs);
         for (int index = jobs.size() - 1; index >= 0; index--) {
             ExtractedJob extracted = jobs.get(index);
             rollbackExtractedJob(extracted.job(), extracted.insertedInstantOutputs());
         }
+    }
+
+    private void assertNoAmbiguousInstantOutputRollback(List<ExtractedJob> jobs) {
+        for (int index = 0; index < jobs.size(); index++) {
+            ExtractedJob extracted = jobs.get(index);
+            if (!extracted.insertedInstantOutputs()) {
+                continue;
+            }
+
+            for (ItemStack output : extracted.job().outputs()) {
+                int recoverableMatchingCount = inventory.count(output) + heldMatchingCount(jobs, index + 1, output);
+                int generatedMatchingCount = generatedMatchingCount(jobs, index, output);
+                if (recoverableMatchingCount > generatedMatchingCount) {
+                    throw new IllegalStateException(
+                            "Cannot safely rollback instant crafting output with pre-existing matching kitchen items"
+                    );
+                }
+            }
+        }
+    }
+
+    private int heldMatchingCount(List<ExtractedJob> jobs, int startIndex, ItemStack prototype) {
+        int count = 0;
+        for (int index = startIndex; index < jobs.size(); index++) {
+            KitchenStationJob job = jobs.get(index).job();
+            count += matchingCount(job.inputs(), prototype);
+            count += job.servingContainer().filter(stack -> ItemStack.isSameItemSameComponents(stack, prototype))
+                    .map(ItemStack::getCount)
+                    .orElse(0);
+            count += job.fuel().filter(stack -> ItemStack.isSameItemSameComponents(stack, prototype))
+                    .map(ItemStack::getCount)
+                    .orElse(0);
+        }
+        return count;
+    }
+
+    private int generatedMatchingCount(List<ExtractedJob> jobs, int startIndex, ItemStack prototype) {
+        int count = 0;
+        for (int index = startIndex; index < jobs.size(); index++) {
+            ExtractedJob job = jobs.get(index);
+            if (job.insertedInstantOutputs()) {
+                count += matchingCount(job.job().outputs(), prototype);
+            }
+        }
+        return count;
+    }
+
+    private int matchingCount(List<ItemStack> stacks, ItemStack prototype) {
+        int count = 0;
+        for (ItemStack stack : stacks) {
+            if (ItemStack.isSameItemSameComponents(stack, prototype)) {
+                count += stack.getCount();
+            }
+        }
+        return count;
     }
 
     private void rollbackExtractedJob(KitchenStationJob job, boolean removeInstantOutputs) {
