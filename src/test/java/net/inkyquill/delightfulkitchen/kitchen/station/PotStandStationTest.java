@@ -145,6 +145,24 @@ class PotStandStationTest {
     }
 
     @Test
+    void queuedDisplaySlotsDisallowMenuPickupButManualSlotsRemainPickable() {
+        PotStandBlockEntity queued = newPotStand();
+        KitchenStation station = assertInstanceOf(KitchenStation.class, queued);
+        station.accept(job(KitchenStationType.COOKING_POT));
+
+        PotStandBlockEntity manual = newPotStand();
+        manual.setItem(0, new ItemStack(Items.BEEF));
+        manual.setItem(PotStandBlockEntity.SLOT_CONTAINER, new ItemStack(Items.BOWL));
+
+        assertFalse(queued.canPlayerTakeItem(0));
+        assertFalse(queued.canPlayerTakeItem(PotStandBlockEntity.SLOT_CONTAINER));
+        assertTrue(queued.canPlayerTakeItem(PotStandBlockEntity.SLOT_OUTPUT));
+        assertTrue(queued.canPlayerTakeItem(PotStandBlockEntity.SLOT_FUEL));
+        assertTrue(manual.canPlayerTakeItem(0));
+        assertTrue(manual.canPlayerTakeItem(PotStandBlockEntity.SLOT_CONTAINER));
+    }
+
+    @Test
     void queuedBreakDropsPendingOutputButNotConsumedVisibleInputsOrContainer() {
         PotStandBlockEntity potStand = newPotStand();
         KitchenStation station = assertInstanceOf(KitchenStation.class, potStand);

@@ -367,6 +367,7 @@ public class PotStandBlockEntity extends BlockEntity
 
     @Override
     public boolean canPlaceItem(int slot, ItemStack stack) {
+        if (isQueuedDisplaySlot(slot)) return false;
         if (slot == SLOT_OUTPUT) return false;
         if (slot == SLOT_FUEL) return getBurnTime(stack) > 0;
         return true;
@@ -529,6 +530,10 @@ public class PotStandBlockEntity extends BlockEntity
 
     private boolean isQueuedDisplaySlot(int slot) {
         return queuedJobActive && ((slot >= 0 && slot < INPUT_SLOTS) || slot == SLOT_CONTAINER);
+    }
+
+    public boolean canPlayerTakeItem(int slot) {
+        return !isQueuedDisplaySlot(slot);
     }
 
     // ------------------------------------------------------------------

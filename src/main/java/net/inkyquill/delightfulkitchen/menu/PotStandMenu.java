@@ -75,13 +75,13 @@ public class PotStandMenu extends AbstractContainerMenu {
     private void addIngredientSlots() {
         // 6 ingredient slots – two rows of 3, top section (y=18)
         for (int i = 0; i < 3; i++) {
-            addSlot(new Slot(container, i,     8 + i * 18, 18));
+            addSlot(new PotStandSlot(container, i, 8 + i * 18, 18));
         }
         for (int i = 0; i < 3; i++) {
-            addSlot(new Slot(container, 3 + i, 8 + i * 18, 36));
+            addSlot(new PotStandSlot(container, 3 + i, 8 + i * 18, 36));
         }
         // Container slot (bowl / bottle) – center below ingredients (y=54)
-        addSlot(new Slot(container, PotStandBlockEntity.SLOT_CONTAINER, 62, 54));
+        addSlot(new PotStandSlot(container, PotStandBlockEntity.SLOT_CONTAINER, 62, 54));
         // Output slot – non-insertable (y=54, right side)
         addSlot(new Slot(container, PotStandBlockEntity.SLOT_OUTPUT, 116, 54) {
             @Override public boolean mayPlace(ItemStack stack) { return false; }
@@ -112,6 +112,7 @@ public class PotStandMenu extends AbstractContainerMenu {
         ItemStack result = ItemStack.EMPTY;
         Slot slot = slots.get(index);
         if (!slot.hasItem()) return result;
+        if (!slot.mayPickup(player)) return result;
 
         ItemStack stack = slot.getItem();
         result = stack.copy();
@@ -166,5 +167,24 @@ public class PotStandMenu extends AbstractContainerMenu {
     public float getBurnProgress() {
         int total = getBurnTotal();
         return total == 0 ? 0f : (float) getBurnTime() / total;
+    }
+
+    private static class PotStandSlot extends Slot {
+        private PotStandSlot(Container container, int slot, int x, int y) {
+            super(container, slot, x, y);
+        }
+
+        @Override
+        public boolean mayPickup(Player player) {
+            if (container instanceof PotStandBlockEntity potStand) {
+                return potStand.canPlayerTakeItem(getSlotIndex());
+            }
+            return super.mayPickup(player);
+        }
+
+        @Override
+        public boolean mayPlace(ItemStack stack) {
+            return container.canPlaceItem(getSlotIndex(), stack) && super.mayPlace(stack);
+        }
     }
 }
