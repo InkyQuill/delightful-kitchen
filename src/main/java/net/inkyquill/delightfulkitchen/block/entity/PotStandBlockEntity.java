@@ -37,6 +37,7 @@ import org.jetbrains.annotations.Nullable;
 import vectorwing.farmersdelight.common.crafting.CookingPotRecipe;
 import vectorwing.farmersdelight.common.registry.ModRecipeTypes;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -242,12 +243,12 @@ public class PotStandBlockEntity extends BlockEntity
             return;
         }
 
-        ItemStack remainder = pendingOutput.copy();
-        if (storeInOutputSlot(remainder)) {
+        ItemStack remainder = storeInOutputSlot(pendingOutput);
+        if (remainder.isEmpty()) {
             clearManualPendingOutput();
             level.setBlock(pos, state.setValue(PotStandBlock.ACTIVE, false), 3);
         } else {
-            pendingOutput = remainder.copy();
+            pendingOutput = remainder;
             outputBlocked = true;
             level.setBlock(pos, state.setValue(PotStandBlock.ACTIVE, true), 3);
         }
@@ -256,8 +257,9 @@ public class PotStandBlockEntity extends BlockEntity
 
     private void finishQueuedCooking(Level level, BlockPos pos, BlockState state) {
         ItemStack remainder = routeQueuedOutput(level, pendingOutput);
-        if (!remainder.isEmpty() && !storeInOutputSlot(remainder)) {
-            pendingOutput = remainder.copy();
+        remainder = storeInOutputSlot(remainder);
+        if (!remainder.isEmpty()) {
+            pendingOutput = remainder;
             outputBlocked = true;
             level.setBlock(pos, state.setValue(PotStandBlock.ACTIVE, true), 3);
             setChanged();
@@ -270,13 +272,14 @@ public class PotStandBlockEntity extends BlockEntity
     }
 
     void finishQueuedCookingWithRemainder(ItemStack remainder) {
-        if (remainder.isEmpty() || storeInOutputSlot(remainder)) {
+        ItemStack outputRemainder = storeInOutputSlot(remainder);
+        if (outputRemainder.isEmpty()) {
             clearQueuedJob();
             setChanged();
             return;
         }
 
-        pendingOutput = remainder.copy();
+        pendingOutput = outputRemainder;
         outputBlocked = true;
         setChanged();
     }
@@ -288,24 +291,25 @@ public class PotStandBlockEntity extends BlockEntity
         return inventory.insert(stack, false);
     }
 
-    private boolean storeInOutputSlot(ItemStack stack) {
+    private ItemStack storeInOutputSlot(ItemStack stack) {
         if (stack.isEmpty()) {
-            return true;
+            return ItemStack.EMPTY;
         }
 
+        ItemStack remainder = stack.copy();
         ItemStack existing = items.get(SLOT_OUTPUT);
         if (existing.isEmpty()) {
-            items.set(SLOT_OUTPUT, stack.copy());
-            stack.setCount(0);
-            return true;
+            items.set(SLOT_OUTPUT, remainder.copy());
+            return ItemStack.EMPTY;
         }
-        if (ItemStack.isSameItemSameComponents(existing, stack)
-                && existing.getCount() + stack.getCount() <= existing.getMaxStackSize()) {
-            existing.grow(stack.getCount());
-            stack.setCount(0);
-            return true;
+        if (ItemStack.isSameItemSameComponents(existing, remainder)) {
+            int transfer = Math.min(remainder.getCount(), existing.getMaxStackSize() - existing.getCount());
+            if (transfer > 0) {
+                existing.grow(transfer);
+                remainder.shrink(transfer);
+            }
         }
-        return false;
+        return remainder.isEmpty() ? ItemStack.EMPTY : remainder;
     }
 
     private void clearManualPendingOutput() {
@@ -336,16 +340,27 @@ public class PotStandBlockEntity extends BlockEntity
 
     @Override
     public ItemStack removeItem(int slot, int amount) {
+        if (isQueuedDisplaySlot(slot)) {
+            return ItemStack.EMPTY;
+        }
         ItemStack result = ContainerHelper.removeItem(items, slot, amount);
         if (!result.isEmpty()) setChanged();
         return result;
     }
 
     @Override
-    public ItemStack removeItemNoUpdate(int slot) { return ContainerHelper.takeItem(items, slot); }
+    public ItemStack removeItemNoUpdate(int slot) {
+        if (isQueuedDisplaySlot(slot)) {
+            return ItemStack.EMPTY;
+        }
+        return ContainerHelper.takeItem(items, slot);
+    }
 
     @Override
     public void setItem(int slot, ItemStack stack) {
+        if (isQueuedDisplaySlot(slot)) {
+            return;
+        }
         items.set(slot, stack);
         setChanged();
     }
@@ -366,7 +381,14 @@ public class PotStandBlockEntity extends BlockEntity
                         worldPosition.getZ() + 0.5) <= 64.0;
     }
 
-    @Override public void clearContent() { items.replaceAll(ignored -> ItemStack.EMPTY); setChanged(); }
+    @Override public void clearContent() {
+        for (int i = 0; i < items.size(); i++) {
+            if (!isQueuedDisplaySlot(i)) {
+                items.set(i, ItemStack.EMPTY);
+            }
+        }
+        setChanged();
+    }
 
     // ------------------------------------------------------------------
     // KitchenStation
@@ -505,6 +527,10 @@ public class PotStandBlockEntity extends BlockEntity
                 .orElse(true);
     }
 
+    private boolean isQueuedDisplaySlot(int slot) {
+        return queuedJobActive && ((slot >= 0 && slot < INPUT_SLOTS) || slot == SLOT_CONTAINER);
+    }
+
     // ------------------------------------------------------------------
     // MenuProvider / Nameable
     // ------------------------------------------------------------------
@@ -530,17 +556,32 @@ public class PotStandBlockEntity extends BlockEntity
     // ------------------------------------------------------------------
 
     public void dropContents(Level level, BlockPos pos) {
-        for (ItemStack stack : items) {
+        for (ItemStack stack : breakDrops()) {
             if (!stack.isEmpty())
                 net.minecraft.world.Containers.dropItemStack(level, pos.getX(), pos.getY(), pos.getZ(), stack);
         }
-        if (pendingOutput != null && !pendingOutput.isEmpty())
-            net.minecraft.world.Containers.dropItemStack(level, pos.getX(), pos.getY(), pos.getZ(), pendingOutput);
         items.replaceAll(ignored -> ItemStack.EMPTY);
         pendingOutput = null;
         activeJob = null;
         queuedJobActive = false;
         outputBlocked = false;
+    }
+
+    List<ItemStack> breakDrops() {
+        List<ItemStack> drops = new ArrayList<>();
+        for (int slot = 0; slot < items.size(); slot++) {
+            if (isQueuedDisplaySlot(slot)) {
+                continue;
+            }
+            ItemStack stack = items.get(slot);
+            if (!stack.isEmpty()) {
+                drops.add(stack.copy());
+            }
+        }
+        if (pendingOutput != null && !pendingOutput.isEmpty()) {
+            drops.add(pendingOutput.copy());
+        }
+        return List.copyOf(drops);
     }
 
     public boolean isCooking() { return pendingOutput != null; }

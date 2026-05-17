@@ -21,13 +21,11 @@ import vectorwing.farmersdelight.common.crafting.CuttingBoardRecipe;
  *   <li><b>KitchenRecipeHandlers</b> – teach CfB's recipe book how to find ingredients
  *       for {@code CookingPotRecipe}, {@code CuttingBoardRecipe}, and
  *       {@code CampfireCookingRecipe} (grill).</li>
- *   <li><b>KitchenItemProcessor capabilities</b> – register the Pot Stand
- *       with NeoForge so CfB's kitchen discovery can pick it up when scanning
- *       adjacent blocks.</li>
  * </ol>
  *
  * <p>Recipe handler registration is called from {@link net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent#enqueueWork}.
- * Capability registration is done in {@link RegisterCapabilitiesEvent}.
+ * Station {@code KitchenItemProcessor} capability registration has been removed;
+ * remaining CfB recipe handler cleanup is pending Task 8.
  */
 public class FarmersDelightCompat {
 
@@ -58,7 +56,7 @@ public class FarmersDelightCompat {
         DelightfulKitchen.LOGGER.info("[Delightful Kitchen] Farmer's Delight recipe handlers registered.");
     }
 
-    /** Called from {@link RegisterCapabilitiesEvent} to expose our block entities as KitchenItemProcessors. */
+    /** Station KitchenItemProcessor capabilities have been removed; Task 8 will clean up remaining CfB hooks. */
     public static void registerCapabilities(RegisterCapabilitiesEvent event) {
     }
 }

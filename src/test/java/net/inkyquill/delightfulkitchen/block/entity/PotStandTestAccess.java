@@ -5,6 +5,8 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 
+import java.util.List;
+
 public final class PotStandTestAccess {
     private PotStandTestAccess() {
     }
@@ -15,5 +17,9 @@ public final class PotStandTestAccess {
 
     public static void finishQueuedCookingWithRemainder(PotStandBlockEntity potStand, ItemStack remainder) {
         potStand.finishQueuedCookingWithRemainder(remainder);
+    }
+
+    public static List<ItemStack> breakDrops(PotStandBlockEntity potStand) {
+        return potStand.breakDrops();
     }
 }

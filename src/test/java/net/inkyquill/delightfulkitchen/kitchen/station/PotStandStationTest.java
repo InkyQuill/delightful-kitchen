@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -125,6 +126,54 @@ class PotStandStationTest {
         assertTrue(tag.contains("PendingOutput"));
     }
 
+    @Test
+    void queuedInputsAndContainerCannotBeRemovedOrReplacedThroughContainerMethods() {
+        PotStandBlockEntity potStand = newPotStand();
+        KitchenStation station = assertInstanceOf(KitchenStation.class, potStand);
+        station.accept(job(KitchenStationType.COOKING_POT));
+
+        ItemStack removedInput = potStand.removeItem(0, 1);
+        ItemStack removedContainer = potStand.removeItemNoUpdate(PotStandBlockEntity.SLOT_CONTAINER);
+        potStand.setItem(1, new ItemStack(Items.DIAMOND));
+        potStand.setItem(PotStandBlockEntity.SLOT_CONTAINER, new ItemStack(Items.GLASS_BOTTLE));
+
+        assertTrue(removedInput.isEmpty());
+        assertTrue(removedContainer.isEmpty());
+        assertEquals(Items.BEEF, potStand.getItem(0).getItem());
+        assertEquals(Items.CARROT, potStand.getItem(1).getItem());
+        assertEquals(Items.BOWL, potStand.getItem(PotStandBlockEntity.SLOT_CONTAINER).getItem());
+    }
+
+    @Test
+    void queuedBreakDropsPendingOutputButNotConsumedVisibleInputsOrContainer() {
+        PotStandBlockEntity potStand = newPotStand();
+        KitchenStation station = assertInstanceOf(KitchenStation.class, potStand);
+        station.accept(job(KitchenStationType.COOKING_POT));
+
+        List<ItemStack> drops = PotStandTestAccess.breakDrops(potStand);
+
+        assertTrue(contains(drops, Items.MUSHROOM_STEW));
+        assertFalse(contains(drops, Items.BEEF));
+        assertFalse(contains(drops, Items.CARROT));
+        assertFalse(contains(drops, Items.BOWL));
+    }
+
+    @Test
+    void queuedOutputFallbackPartiallyMergesIntoInternalOutputSlotAndKeepsOnlyRemainderBlocked() {
+        PotStandBlockEntity potStand = newPotStand();
+        KitchenStation station = assertInstanceOf(KitchenStation.class, potStand);
+        station.accept(multiOutputJob());
+        potStand.setItem(PotStandBlockEntity.SLOT_OUTPUT, new ItemStack(Items.STICK, 63));
+
+        PotStandTestAccess.finishQueuedCookingWithRemainder(potStand, new ItemStack(Items.STICK, 3));
+        CompoundTag tag = potStand.saveCustomOnly(registries());
+
+        assertEquals(64, potStand.getItem(PotStandBlockEntity.SLOT_OUTPUT).getCount());
+        assertEquals(1, station.queuedJobCount());
+        assertEquals(KitchenStationStatus.OUTPUT_BLOCKED, station.stationStatus());
+        assertEquals(2, ItemStack.parse(registries(), tag.getCompound("PendingOutput")).orElseThrow().getCount());
+    }
+
     private static PotStandBlockEntity newPotStand() {
         return PotStandTestAccess.newPotStand();
     }
@@ -139,6 +188,22 @@ class PotStandStationTest {
                 Optional.of(new ItemStack(Items.COAL, 2)),
                 20
         );
+    }
+
+    private static KitchenStationJob multiOutputJob() {
+        return new KitchenStationJob(
+                ResourceLocation.fromNamespaceAndPath("delightful_kitchen", "pot_stand_multi_output_test"),
+                KitchenStationType.COOKING_POT,
+                List.of(new ItemStack(Items.BEEF), new ItemStack(Items.CARROT)),
+                List.of(new ItemStack(Items.STICK, 3)),
+                Optional.of(new ItemStack(Items.BOWL)),
+                Optional.of(new ItemStack(Items.COAL, 2)),
+                20
+        );
+    }
+
+    private static boolean contains(List<ItemStack> stacks, net.minecraft.world.item.Item item) {
+        return stacks.stream().anyMatch(stack -> stack.is(item));
     }
 
     private static CompoundTag blockedOutputTag() {
