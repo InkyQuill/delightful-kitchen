@@ -33,12 +33,12 @@ public class ChefCounterMenu extends AbstractContainerMenu {
     private static final int DATA_FLOOR_COUNT = 0;
     private static final int DATA_INVENTORY_COUNT = 1;
     private static final int DATA_MULTIPLE_COUNTERS = 2;
-    private static final int DATA_WATER_PROVIDER_COUNT = 3;
-    private static final int DATA_FREEZER_COUNT = 4;
-    private static final int DATA_RECIPE_COUNT = 5;
-    private static final int DATA_READY_COUNT = 6;
-    private static final int DATA_INTERMEDIATE_COUNT = 7;
-    private static final int DATA_BLOCKED_COUNT = 8;
+    private static final int DATA_RECIPE_COUNT = 3;
+    private static final int DATA_READY_COUNT = 4;
+    private static final int DATA_INTERMEDIATE_COUNT = 5;
+    private static final int DATA_BLOCKED_COUNT = 6;
+    private static final int DATA_WATER_PROVIDER_COUNT = 7;
+    private static final int DATA_FREEZER_COUNT = 8;
 
     private final ContainerLevelAccess access;
     private final ContainerData data;

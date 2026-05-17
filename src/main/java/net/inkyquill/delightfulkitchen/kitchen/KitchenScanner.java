@@ -11,6 +11,7 @@ import net.minecraft.world.Container;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.neoforge.items.IItemHandler;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayDeque;
@@ -27,13 +28,17 @@ public final class KitchenScanner {
     }
 
     public static KitchenScanResult scan(Level level, BlockPos counterPos) {
+        return scan(new LevelScanView(level), counterPos);
+    }
+
+    static KitchenScanResult scan(ScanView view, BlockPos counterPos) {
         BlockPos counter = counterPos.immutable();
         BlockPos startFloor = counter.below();
-        if (!level.getBlockState(startFloor).is(ModBlocks.KITCHEN_FLOOR.get())) {
+        if (!view.isKitchenFloor(startFloor)) {
             return new KitchenScanResult(false, Set.of(), List.of(), List.of(counter), List.of(), List.of());
         }
 
-        Set<BlockPos> floors = findConnectedFloors(level, startFloor);
+        Set<BlockPos> floors = findConnectedFloors(view, startFloor);
         List<BlockPos> members = new ArrayList<>();
         Set<BlockPos> counters = new LinkedHashSet<>();
         List<BlockPos> waterProviders = new ArrayList<>();
@@ -42,20 +47,20 @@ public final class KitchenScanner {
         for (BlockPos floor : floors) {
             for (int yOffset = 1; yOffset <= MAX_SCAN_HEIGHT; yOffset++) {
                 BlockPos pos = floor.above(yOffset).immutable();
-                if (level.getBlockState(pos).is(ModBlocks.WATER_PROVIDER.get())) {
+                if (view.isWaterProvider(pos)) {
                     waterProviders.add(pos);
                     continue;
                 }
-                if (level.getBlockState(pos).is(ModBlocks.FREEZER.get())) {
+                if (view.isFreezer(pos)) {
                     freezers.add(pos);
                     continue;
                 }
-                if (!isCompatibleMember(level, pos)) {
+                if (!isCompatibleMember(view, pos)) {
                     continue;
                 }
 
                 members.add(pos);
-                if (level.getBlockState(pos).is(ModBlocks.CHEF_COUNTER.get())) {
+                if (view.isChefCounter(pos)) {
                     counters.add(pos);
                 }
             }
@@ -66,16 +71,15 @@ public final class KitchenScanner {
                 List.copyOf(waterProviders), List.copyOf(freezers));
     }
 
-    private static boolean isCompatibleMember(Level level, BlockPos pos) {
-        if (level.getBlockState(pos).is(ModBlocks.WATER_PROVIDER.get())
-                || level.getBlockState(pos).is(ModBlocks.FREEZER.get())) {
+    private static boolean isCompatibleMember(ScanView view, BlockPos pos) {
+        if (view.isWaterProvider(pos) || view.isFreezer(pos)) {
             return false;
         }
-        BlockEntity blockEntity = level.getBlockEntity(pos);
+        BlockEntity blockEntity = view.getBlockEntity(pos);
         return blockEntity instanceof Container
                 || blockEntity instanceof KitchenStation
-                || level.getCapability(Capabilities.ItemHandler.BLOCK, pos, null) != null
-                || level.getBlockState(pos).is(ModBlocks.CHEF_COUNTER.get());
+                || view.getItemHandler(pos) != null
+                || view.isChefCounter(pos);
     }
 
     public static boolean isInventoryProvider(Level level, BlockPos pos) {
@@ -94,7 +98,7 @@ public final class KitchenScanner {
                 || blockEntity instanceof PotStandBlockEntity;
     }
 
-    private static Set<BlockPos> findConnectedFloors(Level level, BlockPos start) {
+    private static Set<BlockPos> findConnectedFloors(ScanView view, BlockPos start) {
         Set<BlockPos> visited = new LinkedHashSet<>();
         ArrayDeque<BlockPos> queue = new ArrayDeque<>();
         queue.add(start.immutable());
@@ -107,12 +111,60 @@ public final class KitchenScanner {
 
             for (Direction direction : Direction.Plane.HORIZONTAL) {
                 BlockPos next = pos.relative(direction).immutable();
-                if (!visited.contains(next) && level.getBlockState(next).is(ModBlocks.KITCHEN_FLOOR.get())) {
+                if (!visited.contains(next) && view.isKitchenFloor(next)) {
                     queue.add(next);
                 }
             }
         }
 
         return Set.copyOf(visited);
+    }
+
+    interface ScanView {
+        boolean isKitchenFloor(BlockPos pos);
+
+        boolean isWaterProvider(BlockPos pos);
+
+        boolean isFreezer(BlockPos pos);
+
+        boolean isChefCounter(BlockPos pos);
+
+        @Nullable
+        BlockEntity getBlockEntity(BlockPos pos);
+
+        @Nullable
+        IItemHandler getItemHandler(BlockPos pos);
+    }
+
+    private record LevelScanView(Level level) implements ScanView {
+        @Override
+        public boolean isKitchenFloor(BlockPos pos) {
+            return level.getBlockState(pos).is(ModBlocks.KITCHEN_FLOOR.get());
+        }
+
+        @Override
+        public boolean isWaterProvider(BlockPos pos) {
+            return level.getBlockState(pos).is(ModBlocks.WATER_PROVIDER.get());
+        }
+
+        @Override
+        public boolean isFreezer(BlockPos pos) {
+            return level.getBlockState(pos).is(ModBlocks.FREEZER.get());
+        }
+
+        @Override
+        public boolean isChefCounter(BlockPos pos) {
+            return level.getBlockState(pos).is(ModBlocks.CHEF_COUNTER.get());
+        }
+
+        @Override
+        public BlockEntity getBlockEntity(BlockPos pos) {
+            return level.getBlockEntity(pos);
+        }
+
+        @Override
+        public IItemHandler getItemHandler(BlockPos pos) {
+            return level.getCapability(Capabilities.ItemHandler.BLOCK, pos, null);
+        }
     }
 }
