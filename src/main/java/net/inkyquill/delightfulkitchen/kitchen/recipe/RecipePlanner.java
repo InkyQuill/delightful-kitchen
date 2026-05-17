@@ -280,16 +280,26 @@ public final class RecipePlanner {
     private Optional<PlanAttempt> planWithUtility(PlannedRecipe target, KitchenInventorySnapshot snapshot,
                                                   EnumSet<PlanningBlocker> baseBlockers, List<PlannedRecipe> steps,
                                                   boolean usedIntermediate) {
-        Optional<UtilityIngredient> utilityIngredient = missingUtilityIngredient(target, snapshot);
-        if (utilityIngredient.isEmpty()) {
+        UtilityIngredientAnalysis utilityIngredient = missingUtilityIngredient(target, snapshot);
+        if (utilityIngredient.blockedByMultipleUtilityIngredients()) {
+            EnumSet<PlanningBlocker> blockers = baseBlockers.clone();
+            blockers.add(PlanningBlocker.MISSING_RAW_INGREDIENT);
+            return Optional.of(PlanAttempt.blocked(target, snapshot, appendStep(steps, target), blockers));
+        }
+        if (utilityIngredient.ingredient().isEmpty()) {
             return Optional.empty();
         }
 
-        UtilityIngredient utility = utilityIngredient.orElseThrow();
+        UtilityIngredient utility = utilityIngredient.ingredient().orElseThrow();
         PlannedRecipe utilityStep = withUtilityRequirement(target, utility);
         EnumSet<PlanningBlocker> blockers = baseBlockers.clone();
         utilityService.map(service -> service.blockersFor(utility.requirement()))
                 .ifPresent(blockers::addAll);
+        Optional<List<ItemStack>> containerMatch = IngredientMatcher.findMatches(snapshot,
+                List.of(containerIngredientFor(utility.requirement())));
+        if (containerMatch.isEmpty()) {
+            blockers.add(containerBlockerFor(utility.requirement()));
+        }
         if (!blockers.isEmpty()) {
             return Optional.of(PlanAttempt.blocked(target, snapshot, appendStep(steps, utilityStep), blockers));
         }
@@ -300,7 +310,8 @@ public final class RecipePlanner {
             return Optional.empty();
         }
 
-        KitchenInventorySnapshot completed = snapshot.withConsumed(matchesWithoutUtility.orElseThrow());
+        KitchenInventorySnapshot completed = snapshot.withConsumed(matchesWithoutUtility.orElseThrow())
+                .withConsumed(containerMatch.orElseThrow());
         List<PlannedRecipe> completedSteps = appendStep(steps, utilityStep);
         return Optional.of(new PlanAttempt(
                 target,
@@ -311,23 +322,29 @@ public final class RecipePlanner {
         ));
     }
 
-    private Optional<UtilityIngredient> missingUtilityIngredient(PlannedRecipe target, KitchenInventorySnapshot snapshot) {
+    private UtilityIngredientAnalysis missingUtilityIngredient(PlannedRecipe target, KitchenInventorySnapshot snapshot) {
         if (utilityService.isEmpty()
                 || target.stationType() != KitchenStationType.CRAFTING
                 || target.utilityRequirement() != KitchenUtilityRequirement.NONE) {
-            return Optional.empty();
+            return UtilityIngredientAnalysis.none();
         }
 
+        Optional<UtilityIngredient> missingUtilityIngredient = Optional.empty();
         for (PlannedIngredient ingredient : target.ingredients()) {
             if (IngredientMatcher.findMatches(snapshot, List.of(ingredient)).isPresent()) {
                 continue;
             }
             Optional<KitchenUtilityRequirement> requirement = utilityRequirementFor(ingredient);
             if (requirement.isPresent()) {
-                return Optional.of(new UtilityIngredient(ingredient, requirement.orElseThrow()));
+                if (missingUtilityIngredient.isPresent()) {
+                    // V1 plans at most one utility substitution per crafting step; Task 6 can lift this with
+                    // explicit per-step borrowed-container accounting.
+                    return UtilityIngredientAnalysis.multipleUtilityIngredients();
+                }
+                missingUtilityIngredient = Optional.of(new UtilityIngredient(ingredient, requirement.orElseThrow()));
             }
         }
-        return Optional.empty();
+        return new UtilityIngredientAnalysis(missingUtilityIngredient, false);
     }
 
     private static Optional<KitchenUtilityRequirement> utilityRequirementFor(PlannedIngredient ingredient) {
@@ -366,6 +383,24 @@ public final class RecipePlanner {
                 target.processingTime(),
                 target.asynchronous()
         );
+    }
+
+    private static PlannedIngredient containerIngredientFor(KitchenUtilityRequirement requirement) {
+        return switch (requirement) {
+            case NONE -> throw new IllegalArgumentException("NONE does not require a utility container");
+            case WATER -> new PlannedIngredient(Ingredient.of(Items.BUCKET, Items.GLASS_BOTTLE), 1);
+            case ICE -> new PlannedIngredient(Ingredient.of(Items.BUCKET), 1);
+            case SNOWBALL -> new PlannedIngredient(Ingredient.of(Items.GLASS_BOTTLE), 1);
+        };
+    }
+
+    private static PlanningBlocker containerBlockerFor(KitchenUtilityRequirement requirement) {
+        return switch (requirement) {
+            case NONE -> throw new IllegalArgumentException("NONE does not require a utility container");
+            case WATER -> PlanningBlocker.MISSING_WATER_CONTAINER;
+            case ICE -> PlanningBlocker.MISSING_ICE_CONTAINER;
+            case SNOWBALL -> PlanningBlocker.MISSING_SNOWBALL_CONTAINER;
+        };
     }
 
     private static List<PlannedIngredient> requiredExtras(PlannedRecipe target) {
@@ -498,6 +533,23 @@ public final class RecipePlanner {
         private UtilityIngredient {
             ingredient = Objects.requireNonNull(ingredient, "ingredient");
             requirement = Objects.requireNonNull(requirement, "requirement");
+        }
+    }
+
+    private record UtilityIngredientAnalysis(
+            Optional<UtilityIngredient> ingredient,
+            boolean blockedByMultipleUtilityIngredients
+    ) {
+        private UtilityIngredientAnalysis {
+            ingredient = Objects.requireNonNull(ingredient, "ingredient");
+        }
+
+        private static UtilityIngredientAnalysis none() {
+            return new UtilityIngredientAnalysis(Optional.empty(), false);
+        }
+
+        private static UtilityIngredientAnalysis multipleUtilityIngredients() {
+            return new UtilityIngredientAnalysis(Optional.empty(), true);
         }
     }
 }

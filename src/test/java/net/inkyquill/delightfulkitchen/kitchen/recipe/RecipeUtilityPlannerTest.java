@@ -109,6 +109,59 @@ class RecipeUtilityPlannerTest {
         assertEquals(KitchenUtilityRequirement.NONE, plan.steps().getFirst().utilityRequirement());
     }
 
+    @Test
+    void utilityBackedIntermediateReservesContainerForLaterUtilityStep() {
+        PlannedRecipe dough = recipe("dough", Items.WATER_BUCKET, Items.BREAD);
+        PlannedRecipe packedLunch = new PlannedRecipe(
+                ResourceLocation.fromNamespaceAndPath("delightful_kitchen", "packed_lunch"),
+                List.of(
+                        new PlannedIngredient(Ingredient.of(Items.BREAD), 1),
+                        new PlannedIngredient(Ingredient.of(Items.WATER_BUCKET), 1)
+                ),
+                List.of(new ItemStack(Items.COOKED_BEEF)),
+                KitchenStationType.CRAFTING,
+                Optional.empty(),
+                Optional.empty(),
+                KitchenUtilityRequirement.NONE,
+                0,
+                false
+        );
+        KitchenInventoryService inventory = inventory(new ItemStack(Items.WHEAT), new ItemStack(Items.BUCKET));
+        RecipePlanner planner = new RecipePlanner(new RecipeIndex(List.of(dough, packedLunch)),
+                Set.of(KitchenStationType.CRAFTING), service(scan(true, false), inventory));
+
+        RecipePlan plan = planner.plan(packedLunch, inventory.snapshot());
+
+        assertEquals(PlanState.BLOCKED, plan.state());
+        assertTrue(plan.blockers().contains(PlanningBlocker.MISSING_WATER_CONTAINER));
+    }
+
+    @Test
+    void singleRecipeWithMultipleMissingUtilityIngredientsIsNotReady() {
+        PlannedRecipe chilledDough = new PlannedRecipe(
+                ResourceLocation.fromNamespaceAndPath("delightful_kitchen", "chilled_dough"),
+                List.of(
+                        new PlannedIngredient(Ingredient.of(Items.WHEAT), 1),
+                        new PlannedIngredient(Ingredient.of(Items.WATER_BUCKET), 1),
+                        new PlannedIngredient(Ingredient.of(Items.ICE), 1)
+                ),
+                List.of(new ItemStack(Items.BREAD)),
+                KitchenStationType.CRAFTING,
+                Optional.empty(),
+                Optional.empty(),
+                KitchenUtilityRequirement.NONE,
+                0,
+                false
+        );
+        KitchenInventoryService inventory = inventory(new ItemStack(Items.WHEAT), new ItemStack(Items.BUCKET, 2));
+
+        RecipePlan plan = planner(chilledDough, service(scan(true, true), inventory))
+                .plan(chilledDough, inventory.snapshot());
+
+        assertEquals(PlanState.BLOCKED, plan.state());
+        assertTrue(plan.blockers().contains(PlanningBlocker.MISSING_RAW_INGREDIENT));
+    }
+
     private static RecipePlanner planner(PlannedRecipe recipe, KitchenUtilityService utilityService) {
         return new RecipePlanner(new RecipeIndex(List.of(recipe)), Set.of(KitchenStationType.CRAFTING), utilityService);
     }

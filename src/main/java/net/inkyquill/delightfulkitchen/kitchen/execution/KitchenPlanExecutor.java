@@ -10,6 +10,9 @@ import net.inkyquill.delightfulkitchen.kitchen.recipe.RecipePlan;
 import net.inkyquill.delightfulkitchen.kitchen.station.KitchenStationEndpoint;
 import net.inkyquill.delightfulkitchen.kitchen.station.KitchenStationJob;
 import net.inkyquill.delightfulkitchen.kitchen.station.KitchenStationService;
+import net.inkyquill.delightfulkitchen.kitchen.utility.BorrowedContainer;
+import net.inkyquill.delightfulkitchen.kitchen.utility.KitchenUtilityRequirement;
+import net.inkyquill.delightfulkitchen.kitchen.utility.KitchenUtilityService;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.ArrayList;
@@ -24,11 +27,18 @@ public final class KitchenPlanExecutor {
     private final KitchenInventoryService inventory;
     private final KitchenStationService stations;
     private final KitchenScanResult scan;
+    private final KitchenUtilityService utilityService;
 
     public KitchenPlanExecutor(KitchenInventoryService inventory, KitchenStationService stations, KitchenScanResult scan) {
+        this(inventory, stations, scan, new KitchenUtilityService(scan, inventory));
+    }
+
+    public KitchenPlanExecutor(KitchenInventoryService inventory, KitchenStationService stations, KitchenScanResult scan,
+                               KitchenUtilityService utilityService) {
         this.inventory = Objects.requireNonNull(inventory, "inventory");
         this.stations = Objects.requireNonNull(stations, "stations");
         this.scan = Objects.requireNonNull(scan, "scan");
+        this.utilityService = Objects.requireNonNull(utilityService, "utilityService");
     }
 
     public KitchenPlanExecutionResult confirm(RecipePlan plan, KitchenPlanFingerprint expectedFingerprint) {
@@ -50,20 +60,28 @@ public final class KitchenPlanExecutor {
             ExtractJobResult extracted = extractJob(step);
             if (extracted.job().isEmpty()) {
                 rollback(extractedJobs);
-                return KitchenPlanExecutionResult.blocked(extracted.blocker().orElse(PlanningBlocker.MISSING_RAW_INGREDIENT));
+                return KitchenPlanExecutionResult.blocked(extracted.blockers());
             }
 
             KitchenStationJob job = extracted.job().orElseThrow();
             if (job.stationType() == KitchenStationType.CRAFTING) {
                 if (!inventory.insertAll(job.outputs())) {
+                    releaseBorrowedContainer(extracted.borrowedContainer());
                     rollbackExtractedJob(job, false);
                     rollback(extractedJobs);
                     return KitchenPlanExecutionResult.blocked(PlanningBlocker.OUTPUT_STORAGE_FULL);
                 }
+                releaseBorrowedContainer(extracted.borrowedContainer());
                 extractedJobs.add(new ExtractedJob(job, true));
                 continue;
             }
 
+            if (extracted.borrowedContainer().isPresent()) {
+                releaseBorrowedContainer(extracted.borrowedContainer());
+                rollbackExtractedJob(job, false);
+                rollback(extractedJobs);
+                return KitchenPlanExecutionResult.blocked(PlanningBlocker.MISSING_RAW_INGREDIENT);
+            }
             extractedJobs.add(new ExtractedJob(job, false));
             stationJobs.add(job);
         }
@@ -97,6 +115,8 @@ public final class KitchenPlanExecutor {
                 if (!inventory.canInsertAll(step.outputs())) {
                     blockers.add(PlanningBlocker.OUTPUT_STORAGE_FULL);
                 }
+            } else if (step.utilityRequirement() != KitchenUtilityRequirement.NONE) {
+                blockers.add(PlanningBlocker.MISSING_RAW_INGREDIENT);
             } else {
                 stationJobs.add(jobWithoutExtractedInputs(step));
                 futureStationOutputs.addAll(step.outputs());
@@ -220,8 +240,31 @@ public final class KitchenPlanExecutor {
             fuel = consolidatedFuel;
         }
 
-        return ExtractJobResult.success(new KitchenStationJob(step.id(), step.stationType(), inputs, step.outputs(),
-                container, fuel, step.processingTime()));
+        Optional<BorrowedContainer> borrowedContainer = Optional.empty();
+        if (step.utilityRequirement() != KitchenUtilityRequirement.NONE) {
+            if (step.stationType() != KitchenStationType.CRAFTING) {
+                rollbackExtractedParts(inputs, container, fuel);
+                return ExtractJobResult.blocked(PlanningBlocker.MISSING_RAW_INGREDIENT);
+            }
+            EnumSet<PlanningBlocker> blockers = utilityService.blockersFor(step.utilityRequirement());
+            if (!blockers.isEmpty()) {
+                rollbackExtractedParts(inputs, container, fuel);
+                return ExtractJobResult.blocked(blockers);
+            }
+            borrowedContainer = utilityService.borrow(step.utilityRequirement());
+            if (borrowedContainer.isEmpty()) {
+                rollbackExtractedParts(inputs, container, fuel);
+                EnumSet<PlanningBlocker> refreshedBlockers = utilityService.blockersFor(step.utilityRequirement());
+                if (refreshedBlockers.isEmpty()) {
+                    refreshedBlockers.add(containerBlockerFor(step.utilityRequirement()));
+                }
+                return ExtractJobResult.blocked(refreshedBlockers);
+            }
+        }
+
+        KitchenStationJob job = new KitchenStationJob(step.id(), step.stationType(), inputs, step.outputs(),
+                container, fuel, step.processingTime());
+        return ExtractJobResult.success(job, borrowedContainer);
     }
 
     private Optional<ItemStack> consolidateFuel(List<ItemStack> stacks) {
@@ -346,16 +389,51 @@ public final class KitchenPlanExecutor {
         return stack.isEmpty() ? Optional.empty() : Optional.of(stack);
     }
 
+    private void releaseBorrowedContainer(Optional<BorrowedContainer> borrowedContainer) {
+        Optional<ItemStack> remainder = borrowedContainer.flatMap(utilityService::release);
+        if (remainder.isPresent()) {
+            throw new IllegalStateException("Failed to release borrowed utility container");
+        }
+    }
+
+    private static PlanningBlocker containerBlockerFor(KitchenUtilityRequirement requirement) {
+        return switch (requirement) {
+            case NONE -> PlanningBlocker.MISSING_RAW_INGREDIENT;
+            case WATER -> PlanningBlocker.MISSING_WATER_CONTAINER;
+            case ICE -> PlanningBlocker.MISSING_ICE_CONTAINER;
+            case SNOWBALL -> PlanningBlocker.MISSING_SNOWBALL_CONTAINER;
+        };
+    }
+
     private record ExtractedJob(KitchenStationJob job, boolean insertedInstantOutputs) {
     }
 
-    private record ExtractJobResult(Optional<KitchenStationJob> job, Optional<PlanningBlocker> blocker) {
-        private static ExtractJobResult success(KitchenStationJob job) {
-            return new ExtractJobResult(Optional.of(job), Optional.empty());
+    private record ExtractJobResult(
+            Optional<KitchenStationJob> job,
+            Optional<BorrowedContainer> borrowedContainer,
+            EnumSet<PlanningBlocker> blockers
+    ) {
+        private ExtractJobResult {
+            job = Objects.requireNonNull(job, "job");
+            borrowedContainer = Objects.requireNonNull(borrowedContainer, "borrowedContainer");
+            blockers = Objects.requireNonNull(blockers, "blockers").clone();
         }
 
         private static ExtractJobResult blocked(PlanningBlocker blocker) {
-            return new ExtractJobResult(Optional.empty(), Optional.of(blocker));
+            return blocked(EnumSet.of(blocker));
+        }
+
+        private static ExtractJobResult blocked(EnumSet<PlanningBlocker> blockers) {
+            return new ExtractJobResult(Optional.empty(), Optional.empty(), blockers);
+        }
+
+        private static ExtractJobResult success(KitchenStationJob job, Optional<BorrowedContainer> borrowedContainer) {
+            return new ExtractJobResult(Optional.of(job), borrowedContainer, EnumSet.noneOf(PlanningBlocker.class));
+        }
+
+        @Override
+        public EnumSet<PlanningBlocker> blockers() {
+            return blockers.clone();
         }
     }
 }

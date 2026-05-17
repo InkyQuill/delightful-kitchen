@@ -280,6 +280,47 @@ class KitchenPlanExecutorTest {
         assertEquals(1, station.acceptedJobCount());
     }
 
+    @Test
+    void confirmsUtilityCraftingByBorrowingAndReleasingContainer() {
+        SimpleContainer source = new SimpleContainer(
+                new ItemStack(Items.WHEAT),
+                new ItemStack(Items.BUCKET),
+                ItemStack.EMPTY
+        );
+        FakeStation station = new FakeStation(KitchenStationType.GRILL, 1, 0);
+        KitchenInventoryService inventory = inventory(source);
+        KitchenScanResult scan = scan(true, false);
+        RecipePlan plan = plan(recipeWithUtility("dough", KitchenUtilityRequirement.WATER,
+                List.of(ingredient(Items.WHEAT, 1)), List.of(new ItemStack(Items.BREAD))));
+
+        KitchenPlanExecutionResult result = executor(inventory, station, scan)
+                .confirm(plan, KitchenPlanFingerprint.of(scan, inventory.snapshot()));
+
+        assertTrue(result.queued());
+        assertTrue(result.blockers().isEmpty());
+        assertEquals(1, inventory.count(new ItemStack(Items.BREAD)));
+        assertEquals(1, inventory.count(new ItemStack(Items.BUCKET)));
+        assertEquals(0, inventory.count(new ItemStack(Items.WHEAT)));
+    }
+
+    @Test
+    void utilityCraftingDoesNotCreateOutputWhenBorrowIsUnavailableAtConfirmation() {
+        SimpleContainer source = new SimpleContainer(new ItemStack(Items.WHEAT), ItemStack.EMPTY);
+        FakeStation station = new FakeStation(KitchenStationType.GRILL, 1, 0);
+        KitchenInventoryService inventory = inventory(source);
+        KitchenScanResult scan = scan(true, false);
+        RecipePlan plan = plan(recipeWithUtility("dough", KitchenUtilityRequirement.WATER,
+                List.of(ingredient(Items.WHEAT, 1)), List.of(new ItemStack(Items.BREAD))));
+
+        KitchenPlanExecutionResult result = executor(inventory, station, scan)
+                .confirm(plan, KitchenPlanFingerprint.of(scan, inventory.snapshot()));
+
+        assertFalse(result.queued());
+        assertTrue(result.blockers().contains(PlanningBlocker.MISSING_WATER_CONTAINER));
+        assertEquals(1, inventory.count(new ItemStack(Items.WHEAT)));
+        assertEquals(0, inventory.count(new ItemStack(Items.BREAD)));
+    }
+
     private static KitchenPlanExecutor executor(KitchenInventoryService inventory, FakeStation station,
                                                 KitchenScanResult scan) {
         KitchenStationService stations = new KitchenStationService(List.of(
@@ -293,8 +334,14 @@ class KitchenPlanExecutorTest {
     }
 
     private static KitchenScanResult scan() {
+        return scan(false, false);
+    }
+
+    private static KitchenScanResult scan(boolean hasWaterProvider, boolean hasFreezer) {
         return new KitchenScanResult(true, Set.of(BlockPos.ZERO.below()),
-                List.of(BlockPos.ZERO, new BlockPos(1, 64, 0)), List.of(), List.of(), List.of());
+                List.of(BlockPos.ZERO, new BlockPos(1, 64, 0)), List.of(),
+                hasWaterProvider ? List.of(BlockPos.ZERO.east()) : List.of(),
+                hasFreezer ? List.of(BlockPos.ZERO.west()) : List.of());
     }
 
     private static RecipePlan plan(PlannedRecipe... steps) {
@@ -315,6 +362,12 @@ class KitchenPlanExecutorTest {
                                                 PlannedIngredient fuel) {
         return new PlannedRecipe(id(path), ingredients, outputs, stationType,
                 Optional.empty(), Optional.of(fuel), KitchenUtilityRequirement.NONE, 20, true);
+    }
+
+    private static PlannedRecipe recipeWithUtility(String path, KitchenUtilityRequirement requirement,
+                                                   List<PlannedIngredient> ingredients, List<ItemStack> outputs) {
+        return new PlannedRecipe(id(path), ingredients, outputs, KitchenStationType.CRAFTING,
+                Optional.empty(), Optional.empty(), requirement, 20, false);
     }
 
     private static PlannedIngredient ingredient(ItemLike item, int count) {
