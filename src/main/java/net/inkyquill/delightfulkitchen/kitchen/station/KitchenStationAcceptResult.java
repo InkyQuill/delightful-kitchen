@@ -11,6 +11,9 @@ public record KitchenStationAcceptResult(boolean accepted, EnumSet<PlanningBlock
         if (accepted && !blockers.isEmpty()) {
             throw new IllegalArgumentException("accepted station result cannot contain blockers");
         }
+        if (!accepted && blockers.isEmpty()) {
+            throw new IllegalArgumentException("blocked station result must contain at least one blocker");
+        }
     }
 
     public static KitchenStationAcceptResult acceptedResult() {

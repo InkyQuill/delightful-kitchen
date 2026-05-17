@@ -22,8 +22,8 @@ public record KitchenStationJob(
         stationType = Objects.requireNonNull(stationType, "stationType");
         inputs = copyStacks(inputs, "inputs");
         outputs = copyStacks(outputs, "outputs");
-        servingContainer = Objects.requireNonNull(servingContainer, "servingContainer").map(ItemStack::copy);
-        fuel = Objects.requireNonNull(fuel, "fuel").map(ItemStack::copy);
+        servingContainer = copyOptionalStack(servingContainer, "servingContainer");
+        fuel = copyOptionalStack(fuel, "fuel");
         if (outputs.isEmpty()) {
             throw new IllegalArgumentException("station job must have at least one output");
         }
@@ -58,5 +58,11 @@ public record KitchenStationJob(
                 .filter(stack -> !stack.isEmpty())
                 .map(ItemStack::copy)
                 .toList();
+    }
+
+    private static Optional<ItemStack> copyOptionalStack(Optional<ItemStack> stack, String name) {
+        return Objects.requireNonNull(stack, name)
+                .filter(itemStack -> !itemStack.isEmpty())
+                .map(ItemStack::copy);
     }
 }
