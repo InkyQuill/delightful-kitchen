@@ -39,4 +39,8 @@ public class ModMenuTypes {
     public static final DeferredHolder<MenuType<?>, MenuType<FuelProviderMenu>> FUEL_PROVIDER =
             MENUS.register("fuel_provider", () ->
                     IMenuTypeExtension.create(FuelProviderMenu::new));
+
+    public static final DeferredHolder<MenuType<?>, MenuType<FreezerMenu>> FREEZER =
+            MENUS.register("freezer", () ->
+                    IMenuTypeExtension.create(FreezerMenu::new));
 }

@@ -5,6 +5,7 @@ import net.inkyquill.delightfulkitchen.client.screen.CabinetOfHoldingScreen;
 import net.inkyquill.delightfulkitchen.client.screen.ChefCounterScreen;
 import net.inkyquill.delightfulkitchen.client.screen.ContainerStorageScreen;
 import net.inkyquill.delightfulkitchen.client.screen.FuelProviderScreen;
+import net.inkyquill.delightfulkitchen.client.screen.FreezerScreen;
 import net.inkyquill.delightfulkitchen.client.screen.GrillScreen;
 import net.inkyquill.delightfulkitchen.client.screen.PotStandScreen;
 import net.inkyquill.delightfulkitchen.menu.ModMenuTypes;
@@ -26,6 +27,7 @@ public class DelightfulKitchenClient {
         event.register(ModMenuTypes.CONTAINER_STORAGE.get(),  ContainerStorageScreen::new);
         event.register(ModMenuTypes.CABINET_OF_HOLDING.get(), CabinetOfHoldingScreen::new);
         event.register(ModMenuTypes.CHEF_COUNTER.get(),       ChefCounterScreen::new);
-        event.register(ModMenuTypes.FUEL_PROVIDER.get(),    FuelProviderScreen::new);
+        event.register(ModMenuTypes.FUEL_PROVIDER.get(),      FuelProviderScreen::new);
+        event.register(ModMenuTypes.FREEZER.get(),            FreezerScreen::new);
     }
 }
