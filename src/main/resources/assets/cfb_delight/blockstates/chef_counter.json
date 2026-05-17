@@ -1,8 +1,0 @@
-{
-  "variants": {
-    "facing=north": { "model": "cfb_delight:block/chef_counter" },
-    "facing=south": { "model": "cfb_delight:block/chef_counter", "y": 180 },
-    "facing=west":  { "model": "cfb_delight:block/chef_counter", "y": 270 },
-    "facing=east":  { "model": "cfb_delight:block/chef_counter", "y": 90 }
-  }
-}

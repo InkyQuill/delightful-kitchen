@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "BPB",
+    "BKB",
+    "BOB"
+  ],
+  "key": {
+    "B": { "item": "minecraft:bricks" },
+    "P": { "item": "farmersdelight:cooking_pot" },
+    "K": { "item": "cookingforblockheads:counter" },
+    "O": { "item": "farmersdelight:stove" }
+  },
+  "result": {
+    "id": "delightful_kitchen:pot_stand",
+    "count": 1
+  }
+}

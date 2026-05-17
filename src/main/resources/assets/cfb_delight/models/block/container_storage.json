@@ -1,8 +1,0 @@
-{
-  "parent": "minecraft:block/orientable",
-  "textures": {
-    "top":   "cfb_delight:block/container_storage_top",
-    "front": "cfb_delight:block/container_storage_front",
-    "side":  "cfb_delight:block/container_storage_side"
-  }
-}

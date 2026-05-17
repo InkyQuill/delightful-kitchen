@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/cube_bottom_top",
+  "textures": {
+    "top": "delightful_kitchen:block/kitchen_floor_top",
+    "side": "delightful_kitchen:block/kitchen_floor_side",
+    "bottom": "delightful_kitchen:block/kitchen_floor_side"
+  }
+}

@@ -1,8 +1,0 @@
-{
-  "parent": "minecraft:block/orientable",
-  "textures": {
-    "top":   "cfb_delight:block/auto_cutter_top",
-    "front": "cfb_delight:block/auto_cutter_front",
-    "side":  "cfb_delight:block/auto_cutter_side"
-  }
-}

@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "BSB",
+    "BKB",
+    "BOB"
+  ],
+  "key": {
+    "B": { "item": "minecraft:bricks" },
+    "S": { "item": "farmersdelight:skillet" },
+    "K": { "item": "cookingforblockheads:counter" },
+    "O": { "item": "farmersdelight:stove" }
+  },
+  "result": {
+    "id": "delightful_kitchen:grill",
+    "count": 1
+  }
+}

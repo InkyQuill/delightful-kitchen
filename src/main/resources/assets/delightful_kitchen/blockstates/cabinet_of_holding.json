@@ -1,0 +1,8 @@
+{
+  "variants": {
+    "facing=north": { "model": "delightful_kitchen:block/cabinet_of_holding" },
+    "facing=south": { "model": "delightful_kitchen:block/cabinet_of_holding", "y": 180 },
+    "facing=west":  { "model": "delightful_kitchen:block/cabinet_of_holding", "y": 270 },
+    "facing=east":  { "model": "delightful_kitchen:block/cabinet_of_holding", "y": 90 }
+  }
+}

@@ -1,7 +1,7 @@
 {
   "replace": false,
   "values": [
-    "cfb_delight:container_storage",
-    "cfb_delight:cabinet_of_holding"
+    "delightful_kitchen:container_storage",
+    "delightful_kitchen:cabinet_of_holding"
   ]
 }

@@ -1,0 +1,15 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_bricks": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [{"items": "minecraft:bricks"}]
+      }
+    }
+  },
+  "requirements": [["has_bricks"]],
+  "rewards": {
+    "recipes": ["delightful_kitchen:auto_cutter"]
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/orientable",
+  "textures": {
+    "top":   "delightful_kitchen:block/pot_stand_top",
+    "front": "delightful_kitchen:block/pot_stand_front",
+    "side":  "delightful_kitchen:block/pot_stand_side"
+  }
+}

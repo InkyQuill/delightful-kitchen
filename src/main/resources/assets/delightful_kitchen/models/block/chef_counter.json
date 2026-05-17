@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/orientable",
+  "textures": {
+    "top": "delightful_kitchen:block/cabinet_of_holding_top",
+    "front": "delightful_kitchen:block/cabinet_of_holding_front",
+    "side": "delightful_kitchen:block/cabinet_of_holding_side"
+  }
+}

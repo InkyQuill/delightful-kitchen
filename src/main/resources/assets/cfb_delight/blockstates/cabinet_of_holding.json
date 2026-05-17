@@ -1,8 +1,0 @@
-{
-  "variants": {
-    "facing=north": { "model": "cfb_delight:block/cabinet_of_holding" },
-    "facing=south": { "model": "cfb_delight:block/cabinet_of_holding", "y": 180 },
-    "facing=west":  { "model": "cfb_delight:block/cabinet_of_holding", "y": 270 },
-    "facing=east":  { "model": "cfb_delight:block/cabinet_of_holding", "y": 90 }
-  }
-}

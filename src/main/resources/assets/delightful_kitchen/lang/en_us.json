@@ -1,0 +1,47 @@
+{
+  "block.delightful_kitchen.pot_stand":        "Pot Stand",
+  "block.delightful_kitchen.auto_cutter":      "Auto Cutter",
+  "block.delightful_kitchen.grill":            "Grill",
+  "block.delightful_kitchen.container_storage": "Container Storage",
+
+  "container.delightful_kitchen.pot_stand":         "Pot Stand",
+  "container.delightful_kitchen.auto_cutter":       "Auto Cutter",
+  "container.delightful_kitchen.grill":             "Grill",
+  "container.delightful_kitchen.container_storage": "Container Storage",
+
+  "block.delightful_kitchen.cabinet_of_holding": "Cabinet of Holding",
+  "container.delightful_kitchen.cabinet_of_holding": "Cabinet of Holding",
+  "block.delightful_kitchen.chef_counter": "Chef's Counter",
+  "container.delightful_kitchen.chef_counter": "Chef's Counter",
+  "container.delightful_kitchen.chef_counter.status_unlinked": "Kitchen scanner not connected.",
+  "gui.delightful_kitchen.chef_counter.floor_tiles": "Floor tiles: %s",
+  "gui.delightful_kitchen.chef_counter.members": "Inventory blocks: %s",
+  "gui.delightful_kitchen.chef_counter.recipes": "Foods indexed: %s",
+  "gui.delightful_kitchen.chef_counter.ready": "Ready: %s",
+  "gui.delightful_kitchen.chef_counter.intermediates": "Intermediate: %s",
+  "gui.delightful_kitchen.chef_counter.blocked": "Blocked: %s",
+  "gui.delightful_kitchen.chef_counter.multiple_counters": "Multiple Chef's Counters share this floor.",
+
+  "block.delightful_kitchen.fuel_provider": "Fuel Provider",
+  "container.delightful_kitchen.fuel_provider": "Fuel Provider",
+  "block.delightful_kitchen.kitchen_floor": "Kitchen Floor",
+  "item.delightful_kitchen.mop": "Mop",
+
+  "message.delightful_kitchen.kitchen_floor.camouflage_not_ready": "Kitchen floor appearance copying is not active in this build.",
+  "message.delightful_kitchen.kitchen_floor.reset": "Kitchen floor reset.",
+
+  "gui.delightful_kitchen.bowls":   "Bowls",
+  "gui.delightful_kitchen.bottles": "Bottles",
+  "gui.delightful_kitchen.other":   "Other",
+
+  "gui.delightful_kitchen.input": "Input",
+  "gui.delightful_kitchen.output": "Output",
+  "gui.delightful_kitchen.fuel": "Fuel",
+  "gui.delightful_kitchen.container": "Container",
+  "gui.delightful_kitchen.ingredients": "Ingredients",
+
+  "itemGroup.delightful_kitchen": "Delightful Kitchen",
+
+  "category.delightful_kitchen.cooking_pot": "Cooking Pot",
+  "category.delightful_kitchen.cutting_board": "Cutting Board"
+}
