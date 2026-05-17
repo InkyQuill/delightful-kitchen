@@ -303,7 +303,7 @@ public class GrillBlockEntity extends BlockEntity
     public int queuedJobCount() {
         int count = 0;
         for (int i = 0; i < GRILL_SLOTS; i++) {
-            if (isQueuedSlot(i)) {
+            if (isQueuedSlot(i) || pending[i] != null || !items.get(SLOT_INPUT_START + i).isEmpty()) {
                 count++;
             }
         }
@@ -329,14 +329,14 @@ public class GrillBlockEntity extends BlockEntity
         if (job.stationType() != KitchenStationType.GRILL) {
             return KitchenStationAcceptResult.blocked(PlanningBlocker.MISSING_STATION);
         }
+        if (hasBlockedOutput()) {
+            return KitchenStationAcceptResult.blocked(PlanningBlocker.OUTPUT_STORAGE_FULL);
+        }
         if (findEmptyQueueSlot() == -1) {
             return KitchenStationAcceptResult.blocked(PlanningBlocker.STATION_QUEUE_FULL);
         }
         if (!canStoreFuel(job)) {
             return KitchenStationAcceptResult.blocked(PlanningBlocker.STATION_QUEUE_FULL);
-        }
-        if (hasBlockedOutput()) {
-            return KitchenStationAcceptResult.blocked(PlanningBlocker.OUTPUT_STORAGE_FULL);
         }
         return KitchenStationAcceptResult.acceptedResult();
     }
@@ -401,21 +401,46 @@ public class GrillBlockEntity extends BlockEntity
     }
 
     private void addFuel(ItemStack fuel) {
+        if (fuel.isEmpty()) {
+            return;
+        }
         ItemStack existing = items.get(SLOT_FUEL);
         if (existing.isEmpty()) {
+            if (fuel.getCount() > fuel.getMaxStackSize()) {
+                throw new IllegalStateException("Fuel stack exceeds maximum stack size");
+            }
             items.set(SLOT_FUEL, fuel.copy());
-        } else if (ItemStack.isSameItemSameComponents(existing, fuel)) {
-            existing.grow(fuel.getCount());
+            return;
         }
+
+        if (!ItemStack.isSameItemSameComponents(existing, fuel)) {
+            throw new IllegalStateException("Fuel stack is not compatible with the existing grill fuel");
+        }
+        int remainingCapacity = existing.getMaxStackSize() - existing.getCount();
+        if (fuel.getCount() > remainingCapacity) {
+            throw new IllegalStateException("Fuel stack exceeds available grill fuel capacity");
+        }
+        existing.grow(fuel.getCount());
     }
 
     private boolean canStoreFuel(KitchenStationJob job) {
         return job.fuel()
-                .map(fuel -> {
-                    ItemStack existing = items.get(SLOT_FUEL);
-                    return existing.isEmpty() || ItemStack.isSameItemSameComponents(existing, fuel);
-                })
+                .map(this::canStoreFuel)
                 .orElse(true);
+    }
+
+    private boolean canStoreFuel(ItemStack fuel) {
+        if (fuel.isEmpty()) {
+            return true;
+        }
+        ItemStack existing = items.get(SLOT_FUEL);
+        if (existing.isEmpty()) {
+            return fuel.getCount() <= fuel.getMaxStackSize();
+        }
+        if (!ItemStack.isSameItemSameComponents(existing, fuel)) {
+            return false;
+        }
+        return fuel.getCount() <= existing.getMaxStackSize() - existing.getCount();
     }
 
     // ------------------------------------------------------------------

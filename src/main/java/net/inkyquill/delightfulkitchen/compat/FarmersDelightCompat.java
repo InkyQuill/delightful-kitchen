@@ -22,8 +22,8 @@ import vectorwing.farmersdelight.common.crafting.CuttingBoardRecipe;
  *   <li><b>KitchenRecipeHandlers</b> – teach CfB's recipe book how to find ingredients
  *       for {@code CookingPotRecipe}, {@code CuttingBoardRecipe}, and
  *       {@code CampfireCookingRecipe} (grill).</li>
- *   <li><b>KitchenItemProcessor capabilities</b> – register our three block entities
- *       with NeoForge so CfB's kitchen discovery can pick them up when scanning
+ *   <li><b>KitchenItemProcessor capabilities</b> – register the Pot Stand
+ *       with NeoForge so CfB's kitchen discovery can pick it up when scanning
  *       adjacent blocks.</li>
  * </ol>
  *

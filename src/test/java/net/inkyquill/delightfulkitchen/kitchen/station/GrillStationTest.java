@@ -23,6 +23,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -65,6 +66,9 @@ class GrillStationTest {
         KitchenStation blockedStation = assertInstanceOf(KitchenStation.class, blockedGrill);
         blockedStation.accept(job(KitchenStationType.GRILL));
         GrillTestAccess.finishQueuedSlotWithRemainder(blockedGrill, 0, new ItemStack(Items.COOKED_BEEF));
+        for (int i = 1; i < GrillBlockEntity.GRILL_SLOTS; i++) {
+            blockedGrill.setItem(GrillBlockEntity.SLOT_INPUT_START + i, new ItemStack(Items.BEEF));
+        }
         KitchenStationAcceptResult blocked = blockedStation.canAccept(job(KitchenStationType.GRILL));
 
         assertEquals(List.of(PlanningBlocker.MISSING_STATION), List.copyOf(wrongType.blockers()));
@@ -76,12 +80,34 @@ class GrillStationTest {
     @Test
     void blocksFuelThatCannotFitTheFuelSlot() {
         GrillBlockEntity grill = newGrill();
-        grill.setItem(GrillBlockEntity.SLOT_FUEL, new ItemStack(Items.CHARCOAL, 64));
+        grill.setItem(GrillBlockEntity.SLOT_FUEL, new ItemStack(Items.COAL, 64));
         KitchenStation station = assertInstanceOf(KitchenStation.class, grill);
 
         KitchenStationAcceptResult result = station.canAccept(job(KitchenStationType.GRILL));
+        KitchenStationAcceptResult accepted = station.accept(job(KitchenStationType.GRILL));
 
         assertEquals(List.of(PlanningBlocker.STATION_QUEUE_FULL), List.copyOf(result.blockers()));
+        assertFalse(accepted.accepted());
+        assertEquals(64, grill.getItem(GrillBlockEntity.SLOT_FUEL).getCount());
+    }
+
+    @Test
+    void manualOccupiedSlotsReduceEffectiveQueueCapacity() {
+        GrillBlockEntity grill = newGrill();
+        grill.setItem(GrillBlockEntity.SLOT_INPUT_START, new ItemStack(Items.BEEF));
+        KitchenStation station = assertInstanceOf(KitchenStation.class, grill);
+
+        assertEquals(1, station.queuedJobCount());
+        assertEquals(GrillBlockEntity.GRILL_SLOTS - 1, station.queueCapacity() - station.queuedJobCount());
+
+        for (int i = 1; i < GrillBlockEntity.GRILL_SLOTS; i++) {
+            KitchenStationAcceptResult accepted = station.accept(job(KitchenStationType.GRILL));
+            assertTrue(accepted.accepted());
+        }
+        KitchenStationAcceptResult full = station.canAccept(job(KitchenStationType.GRILL));
+
+        assertEquals(GrillBlockEntity.GRILL_SLOTS, station.queuedJobCount());
+        assertEquals(List.of(PlanningBlocker.STATION_QUEUE_FULL), List.copyOf(full.blockers()));
     }
 
     @Test
@@ -107,7 +133,7 @@ class GrillStationTest {
         assertEquals(1, loadedQueuedStation.queuedJobCount());
         assertEquals(KitchenStationStatus.RUNNING, loadedQueuedStation.stationStatus());
         assertArrayEquals(new int[]{1, 0, 0, 0, 0, 0}, queuedTag.getIntArray("QueuedSlots"));
-        assertEquals(0, loadedManualStation.queuedJobCount());
+        assertEquals(1, loadedManualStation.queuedJobCount());
         assertEquals(KitchenStationStatus.RUNNING, loadedManualStation.stationStatus());
     }
 
