@@ -3,6 +3,7 @@ package net.inkyquill.delightfulkitchen.kitchen;
 import net.inkyquill.delightfulkitchen.kitchen.recipe.KitchenInventorySnapshot;
 import net.inkyquill.delightfulkitchen.kitchen.recipe.PlannedIngredient;
 import net.minecraft.core.NonNullList;
+import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 
@@ -118,8 +119,9 @@ public class KitchenInventoryService {
     }
 
     public boolean canInsertAll(List<ItemStack> stacks) {
+        KitchenInventoryService copy = new KitchenInventoryService(copyEndpoints());
         for (ItemStack stack : stacks) {
-            if (!insert(stack, true).isEmpty()) {
+            if (!copy.insert(stack, false).isEmpty()) {
                 return false;
             }
         }
@@ -133,6 +135,18 @@ public class KitchenInventoryService {
             }
         }
         return true;
+    }
+
+    private List<KitchenInventoryEndpoint> copyEndpoints() {
+        List<KitchenInventoryEndpoint> copies = new ArrayList<>();
+        for (KitchenInventoryEndpoint endpoint : endpoints) {
+            SimpleContainer container = new SimpleContainer(endpoint.size());
+            for (int slot = 0; slot < endpoint.size(); slot++) {
+                container.setItem(slot, endpoint.get(slot).copy());
+            }
+            copies.add(new KitchenInventoryEndpoint(endpoint.pos(), container));
+        }
+        return copies;
     }
 
     public NonNullList<ItemStack> visibleStacks(int limit) {

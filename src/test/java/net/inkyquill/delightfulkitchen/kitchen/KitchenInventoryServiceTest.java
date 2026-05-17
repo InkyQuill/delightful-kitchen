@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class KitchenInventoryServiceTest {
@@ -67,6 +68,17 @@ class KitchenInventoryServiceTest {
         ));
 
         assertTrue(service.canInsertAll(List.of(new ItemStack(Items.BREAD))));
+        assertTrue(container.getItem(0).isEmpty());
+    }
+
+    @Test
+    void canInsertAllAccountsForCompetingStacks() {
+        SimpleContainer container = new SimpleContainer(1);
+        KitchenInventoryService service = new KitchenInventoryService(List.of(
+                new KitchenInventoryEndpoint(BlockPos.ZERO, container)
+        ));
+
+        assertFalse(service.canInsertAll(List.of(new ItemStack(Items.BREAD), new ItemStack(Items.APPLE))));
         assertTrue(container.getItem(0).isEmpty());
     }
 }
