@@ -18,8 +18,6 @@ import java.util.function.Predicate;
 public final class KitchenUtilityService {
     public static final TagKey<Item> WATER_CONTAINERS =
             TagKey.create(Registries.ITEM, DelightfulKitchen.id("water_containers"));
-    public static final TagKey<Item> COLD_CONTAINERS =
-            TagKey.create(Registries.ITEM, DelightfulKitchen.id("cold_containers"));
 
     private final KitchenScanResult scan;
     private final KitchenInventoryService inventory;
@@ -100,15 +98,11 @@ public final class KitchenUtilityService {
     }
 
     private static boolean isIceContainer(ItemStack stack) {
-        return isBucket(stack) && isColdContainer(stack);
+        return isBucket(stack);
     }
 
     private static boolean isSnowballContainer(ItemStack stack) {
-        return isGlassBottle(stack) && isColdContainer(stack);
-    }
-
-    private static boolean isColdContainer(ItemStack stack) {
-        return stack.is(COLD_CONTAINERS) || isBucket(stack) || isGlassBottle(stack);
+        return isGlassBottle(stack);
     }
 
     private static boolean isBucket(ItemStack stack) {
