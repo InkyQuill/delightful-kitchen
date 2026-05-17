@@ -16,6 +16,7 @@ public class FreezerScreen extends AbstractContainerScreen<FreezerMenu> {
 
     private static final ResourceLocation TEXTURE =
             DelightfulKitchen.id("textures/gui/freezer.png");
+    private static final int STATUS_TEXT_WIDTH = 78;
 
     private Button modeButton;
 
@@ -58,8 +59,8 @@ public class FreezerScreen extends AbstractContainerScreen<FreezerMenu> {
         }
         graphics.drawString(font, title, titleLabelX, titleLabelY, 0x404040, false);
         graphics.drawString(font, playerInventoryTitle, inventoryLabelX, inventoryLabelY, 0x404040, false);
-        graphics.drawString(font, statusLabel(), 8, 18, 0x636363, false);
-        graphics.drawString(font, progressLabel(), 8, 55, 0x636363, false);
+        graphics.drawString(font, fit(statusLabel(), STATUS_TEXT_WIDTH), 8, 18, 0x636363, false);
+        graphics.drawString(font, fit(progressLabel(), STATUS_TEXT_WIDTH), 8, 55, 0x636363, false);
     }
 
     private Component modeLabel() {
@@ -96,5 +97,13 @@ public class FreezerScreen extends AbstractContainerScreen<FreezerMenu> {
             case SNOW_ONLY -> "snow_only";
             case PAUSED -> "paused";
         };
+    }
+
+    private String fit(Component label, int width) {
+        String text = label.getString();
+        if (font.width(text) <= width) {
+            return text;
+        }
+        return font.plainSubstrByWidth(text, width - font.width("...")) + "...";
     }
 }

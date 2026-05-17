@@ -4,8 +4,11 @@ import net.inkyquill.delightfulkitchen.kitchen.utility.KitchenUtilityService;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntityType;
+
+import java.util.function.Consumer;
 
 public final class FreezerTestAccess {
     private FreezerTestAccess() {
@@ -17,6 +20,11 @@ public final class FreezerTestAccess {
 
     public static void tickWithUtility(FreezerBlockEntity freezer, KitchenUtilityService service) {
         freezer.tickPassiveProduction(service);
+    }
+
+    public static void tickWithUtility(FreezerBlockEntity freezer, KitchenUtilityService service,
+                                       Consumer<ItemStack> unreleasedContainerHandler) {
+        freezer.tickPassiveProduction(service, unreleasedContainerHandler);
     }
 
     public static int progress(FreezerBlockEntity freezer) {

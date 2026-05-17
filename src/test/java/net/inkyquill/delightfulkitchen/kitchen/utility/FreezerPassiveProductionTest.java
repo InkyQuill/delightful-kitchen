@@ -19,6 +19,7 @@ import net.neoforged.fml.loading.LoadingModList;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -138,6 +139,23 @@ class FreezerPassiveProductionTest {
     }
 
     @Test
+    void failedContainerReleaseDoesNotProduceOutputOrDeleteContainer() {
+        FreezerBlockEntity freezer = FreezerTestAccess.create();
+        RejectBucketContainer storage = new RejectBucketContainer(new ItemStack(Items.BUCKET));
+        List<ItemStack> preservedContainers = new ArrayList<>();
+
+        tick(freezer, service(true, storage), FreezerBlockEntity.PASSIVE_CYCLE_TICKS, preservedContainers);
+
+        assertTrue(freezer.isEmpty());
+        assertTrue(storage.isEmpty());
+        assertEquals(1, preservedContainers.size());
+        assertTrue(preservedContainers.getFirst().is(Items.BUCKET));
+        assertEquals(1, preservedContainers.getFirst().getCount());
+        assertEquals(FreezerBlockEntity.PASSIVE_CYCLE_TICKS - 1, FreezerTestAccess.progress(freezer));
+        assertFalse(FreezerTestAccess.isActive(freezer));
+    }
+
+    @Test
     void modeCycleChangesProductionBehavior() {
         FreezerBlockEntity freezer = FreezerTestAccess.create();
         SimpleContainer storage = new SimpleContainer(new ItemStack(Items.BUCKET), new ItemStack(Items.GLASS_BOTTLE));
@@ -169,8 +187,13 @@ class FreezerPassiveProductionTest {
     }
 
     private static void tick(FreezerBlockEntity freezer, KitchenUtilityService service, int ticks) {
+        tick(freezer, service, ticks, new ArrayList<>());
+    }
+
+    private static void tick(FreezerBlockEntity freezer, KitchenUtilityService service, int ticks,
+                             List<ItemStack> preservedContainers) {
         for (int tick = 0; tick < ticks; tick++) {
-            FreezerTestAccess.tickWithUtility(freezer, service);
+            FreezerTestAccess.tickWithUtility(freezer, service, preservedContainers::add);
         }
     }
 
@@ -186,5 +209,16 @@ class FreezerPassiveProductionTest {
     private static HolderLookup.Provider registries() {
         return HolderLookup.Provider.create(BuiltInRegistries.REGISTRY.stream()
                 .map(registry -> ((Registry<?>) registry).asLookup()));
+    }
+
+    private static final class RejectBucketContainer extends SimpleContainer {
+        RejectBucketContainer(ItemStack stack) {
+            super(stack);
+        }
+
+        @Override
+        public boolean canPlaceItem(int slot, ItemStack stack) {
+            return !stack.is(Items.BUCKET);
+        }
     }
 }

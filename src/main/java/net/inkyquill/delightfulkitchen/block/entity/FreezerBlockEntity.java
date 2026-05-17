@@ -29,12 +29,16 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Optional;
+import java.util.function.Consumer;
+
 /** Output inventory shell for the Freezer utility block. */
 public class FreezerBlockEntity extends BlockEntity
         implements Container, MenuProvider, Nameable {
 
     public static final int OUTPUT_SLOTS = 9;
     public static final int PASSIVE_CYCLE_TICKS = 1200;
+    public static final int VALIDATION_INTERVAL_TICKS = 20;
 
     private static final String TAG_PASSIVE_MODE = "PassiveMode";
     private static final String TAG_PROGRESS = "Progress";
@@ -50,6 +54,8 @@ public class FreezerBlockEntity extends BlockEntity
     private final NonNullList<ItemStack> items = NonNullList.withSize(OUTPUT_SLOTS, ItemStack.EMPTY);
     private PassiveMode passiveMode = PassiveMode.ICE_AND_SNOW;
     private int progressTicks = 0;
+    private int validationTicksRemaining = 0;
+    private boolean validationCacheValid = false;
     private boolean nextProductIce = true;
     private boolean active = false;
     @Nullable private Component customName = null;
@@ -101,37 +107,74 @@ public class FreezerBlockEntity extends BlockEntity
             return;
         }
 
+        if (!be.canAcceptOutput(productFor(be.nextRequirement()))) {
+            be.validationCacheValid = false;
+            be.setActive(level, pos, state, false);
+            return;
+        }
+
+        boolean completing = be.progressTicks + 1 >= PASSIVE_CYCLE_TICKS;
+        if (!completing && be.validationTicksRemaining > 0) {
+            be.validationTicksRemaining--;
+            if (be.validationCacheValid) {
+                be.advancePassiveProgress();
+            } else {
+                be.setActive(level, pos, state, false);
+            }
+            be.syncActiveBlockState(level, pos, state);
+            return;
+        }
+
         var scan = KitchenScanner.scanFromKitchenBlock(level, pos);
         if (!scan.hasKitchenFloor()) {
+            be.validationCacheValid = false;
+            be.validationTicksRemaining = VALIDATION_INTERVAL_TICKS;
             be.setActive(level, pos, state, false);
             return;
         }
 
         KitchenUtilityService utility = KitchenServices.utilityService(level, scan, pos);
-        be.tickPassiveProduction(utility);
+        if (!be.canProduceWith(utility)) {
+            be.validationCacheValid = false;
+            be.validationTicksRemaining = VALIDATION_INTERVAL_TICKS;
+            be.setActive(level, pos, state, false);
+            return;
+        }
+
+        be.validationCacheValid = true;
+        be.validationTicksRemaining = VALIDATION_INTERVAL_TICKS;
+        if (completing) {
+            be.tickPassiveProduction(utility, stack -> net.minecraft.world.Containers.dropItemStack(
+                    level, pos.getX(), pos.getY(), pos.getZ(), stack));
+        } else {
+            be.advancePassiveProgress();
+        }
         be.syncActiveBlockState(level, pos, state);
     }
 
     void tickPassiveProduction(KitchenUtilityService utility) {
+        tickPassiveProduction(utility, stack -> {
+            throw new IllegalStateException("Unreleased freezer container remainder: " + stack);
+        });
+    }
+
+    void tickPassiveProduction(KitchenUtilityService utility, Consumer<ItemStack> unreleasedContainerHandler) {
         if (passiveMode == PassiveMode.PAUSED) {
             setActiveFlag(false);
             return;
         }
 
-        KitchenUtilityRequirement requirement = nextRequirement();
-        ItemStack product = productFor(requirement);
-        if (!utility.blockersFor(requirement).isEmpty() || !canAcceptOutput(product)) {
+        if (!canProduceWith(utility)) {
             setActiveFlag(false);
             return;
         }
 
-        setActiveFlag(true);
-        progressTicks++;
+        advancePassiveProgress();
         if (progressTicks < PASSIVE_CYCLE_TICKS) {
-            setChanged();
             return;
         }
 
+        KitchenUtilityRequirement requirement = nextRequirement();
         BorrowedContainer borrowed = utility.borrow(requirement).orElse(null);
         if (borrowed == null) {
             progressTicks = PASSIVE_CYCLE_TICKS - 1;
@@ -140,19 +183,38 @@ public class FreezerBlockEntity extends BlockEntity
             return;
         }
 
-        ItemStack remainder = insertOutput(product, false);
-        utility.release(borrowed);
+        Optional<ItemStack> releaseRemainder = utility.release(borrowed);
+        if (releaseRemainder.isPresent()) {
+            unreleasedContainerHandler.accept(releaseRemainder.orElseThrow());
+            progressTicks = PASSIVE_CYCLE_TICKS - 1;
+            setActiveFlag(false);
+            setChanged();
+            return;
+        }
+
+        ItemStack remainder = insertOutput(productFor(requirement), false);
         if (!remainder.isEmpty()) {
             progressTicks = PASSIVE_CYCLE_TICKS - 1;
             setChanged();
             return;
         }
-
         progressTicks = 0;
         if (passiveMode == PassiveMode.ICE_AND_SNOW) {
             nextProductIce = !nextProductIce;
         }
         setChanged();
+    }
+
+    private void advancePassiveProgress() {
+        setActiveFlag(true);
+        progressTicks++;
+        setChanged();
+    }
+
+    private boolean canProduceWith(KitchenUtilityService utility) {
+        KitchenUtilityRequirement requirement = nextRequirement();
+        ItemStack product = productFor(requirement);
+        return utility.blockersFor(requirement).isEmpty() && canAcceptOutput(product);
     }
 
     public PassiveMode passiveMode() {
@@ -178,6 +240,8 @@ public class FreezerBlockEntity extends BlockEntity
     public void setPassiveMode(PassiveMode mode) {
         passiveMode = mode;
         progressTicks = 0;
+        validationTicksRemaining = 0;
+        validationCacheValid = false;
         setActiveFlag(false);
         setChanged();
     }
