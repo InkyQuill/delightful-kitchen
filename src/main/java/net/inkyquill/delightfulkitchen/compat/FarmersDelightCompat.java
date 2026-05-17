@@ -66,10 +66,6 @@ public class FarmersDelightCompat {
                 (be, ctx) -> be.getKitchenItemProcessor());
 
         event.registerBlockEntity(KITCHEN_ITEM_PROCESSOR,
-                ModBlockEntities.AUTO_CUTTER.get(),
-                (be, ctx) -> be.getKitchenItemProcessor());
-
-        event.registerBlockEntity(KITCHEN_ITEM_PROCESSOR,
                 ModBlockEntities.GRILL.get(),
                 (be, ctx) -> be.getKitchenItemProcessor());
     }

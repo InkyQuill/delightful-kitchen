@@ -1,9 +1,15 @@
 package net.inkyquill.delightfulkitchen.block.entity;
 
-import net.blay09.mods.cookingforblockheads.api.IngredientToken;
-import net.blay09.mods.cookingforblockheads.api.KitchenItemProcessor;
-import net.blay09.mods.cookingforblockheads.api.KitchenOperation;
 import net.inkyquill.delightfulkitchen.block.AutoCutterBlock;
+import net.inkyquill.delightfulkitchen.kitchen.KitchenInventoryService;
+import net.inkyquill.delightfulkitchen.kitchen.KitchenScanner;
+import net.inkyquill.delightfulkitchen.kitchen.KitchenServices;
+import net.inkyquill.delightfulkitchen.kitchen.recipe.KitchenStationType;
+import net.inkyquill.delightfulkitchen.kitchen.recipe.PlanningBlocker;
+import net.inkyquill.delightfulkitchen.kitchen.station.KitchenStation;
+import net.inkyquill.delightfulkitchen.kitchen.station.KitchenStationAcceptResult;
+import net.inkyquill.delightfulkitchen.kitchen.station.KitchenStationJob;
+import net.inkyquill.delightfulkitchen.kitchen.station.KitchenStationStatus;
 import net.inkyquill.delightfulkitchen.menu.AutoCutterMenu;
 import net.inkyquill.delightfulkitchen.util.InventoryHelper;
 import net.minecraft.core.BlockPos;
@@ -21,11 +27,10 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
-import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
 import vectorwing.farmersdelight.common.crafting.CuttingBoardRecipe;
@@ -44,7 +49,7 @@ import java.util.List;
  * </ul>
  */
 public class AutoCutterBlockEntity extends BlockEntity
-        implements Container, MenuProvider, Nameable {
+        implements Container, MenuProvider, Nameable, KitchenStation {
 
     public static final int SLOT_COUNT       = 5;
     public static final int SLOT_INPUT       = 0;
@@ -56,27 +61,16 @@ public class AutoCutterBlockEntity extends BlockEntity
     private final NonNullList<ItemStack> items = NonNullList.withSize(SLOT_COUNT, ItemStack.EMPTY);
     private final List<ItemStack> pendingResults = new ArrayList<>();
     private int activeTimer = 0;
+    private boolean queuedJobActive = false;
+    private boolean outputBlocked = false;
     @Nullable private Component customName = null;
 
-    private final KitchenItemProcessor processor = new KitchenItemProcessor() {
-        @Override
-        public boolean canProcess(RecipeType<?> recipeType) {
-            return recipeType == ModRecipeTypes.CUTTING.get();
-        }
-
-        @Override
-        public KitchenOperation processRecipe(Recipe<?> recipe, List<IngredientToken> ingredientTokens) {
-            if (!items.get(SLOT_INPUT).isEmpty()) return KitchenOperation.EMPTY; // busy
-            ItemStack consumed = ingredientTokens.isEmpty() ? ItemStack.EMPTY : ingredientTokens.get(0).consume();
-            if (consumed.isEmpty()) return KitchenOperation.EMPTY;
-            items.set(SLOT_INPUT, consumed);
-            setChanged();
-            return KitchenOperation.EMPTY;
-        }
-    };
-
     public AutoCutterBlockEntity(BlockPos pos, BlockState state) {
-        super(ModBlockEntities.AUTO_CUTTER.get(), pos, state);
+        this(ModBlockEntities.AUTO_CUTTER.get(), pos, state);
+    }
+
+    AutoCutterBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
+        super(type, pos, state);
     }
 
     // ------------------------------------------------------------------
@@ -84,6 +78,17 @@ public class AutoCutterBlockEntity extends BlockEntity
     // ------------------------------------------------------------------
 
     public static void serverTick(Level level, BlockPos pos, BlockState state, AutoCutterBlockEntity be) {
+        if (be.queuedJobActive) {
+            if (be.activeTimer > 0) {
+                be.activeTimer--;
+            }
+            if (be.activeTimer <= 0) {
+                be.finishQueuedJob(level, pos, state);
+            }
+            be.setChanged();
+            return;
+        }
+
         if (be.activeTimer > 0) {
             be.activeTimer--;
             if (be.activeTimer == 0) {
@@ -152,6 +157,63 @@ public class AutoCutterBlockEntity extends BlockEntity
         setChanged();
     }
 
+    private void finishQueuedJob(Level level, BlockPos pos, BlockState state) {
+        List<ItemStack> remainingResults = new ArrayList<>();
+        outputBlocked = false;
+
+        for (ItemStack output : pendingResults) {
+            if (output.isEmpty()) {
+                continue;
+            }
+            ItemStack remainder = routeOutput(level, output);
+            if (!remainder.isEmpty()) {
+                remainder = placeInOutputSlots(remainder);
+            }
+            if (!remainder.isEmpty()) {
+                remainingResults.add(remainder);
+                outputBlocked = true;
+            }
+        }
+
+        pendingResults.clear();
+        pendingResults.addAll(remainingResults);
+        if (!outputBlocked) {
+            queuedJobActive = false;
+            activeTimer = 0;
+        }
+        if (state.hasProperty(AutoCutterBlock.ACTIVE)) {
+            level.setBlock(pos, state.setValue(AutoCutterBlock.ACTIVE, outputBlocked), 3);
+        }
+        setChanged();
+    }
+
+    private ItemStack routeOutput(Level level, ItemStack stack) {
+        var scan = KitchenScanner.scan(level, worldPosition);
+        var endpoints = KitchenServices.inventoryEndpoints(level, scan, worldPosition);
+        var inventory = new KitchenInventoryService(endpoints);
+        return inventory.insert(stack, false);
+    }
+
+    private ItemStack placeInOutputSlots(ItemStack stack) {
+        ItemStack remainder = stack.copy();
+        for (int i = SLOT_OUTPUT_START; i <= SLOT_OUTPUT_END && !remainder.isEmpty(); i++) {
+            ItemStack existing = items.get(i);
+            if (!existing.isEmpty() && ItemStack.isSameItemSameComponents(existing, remainder)) {
+                int transfer = Math.min(remainder.getCount(), existing.getMaxStackSize() - existing.getCount());
+                if (transfer > 0) {
+                    existing.grow(transfer);
+                    remainder.shrink(transfer);
+                }
+            }
+        }
+        for (int i = SLOT_OUTPUT_START; i <= SLOT_OUTPUT_END && !remainder.isEmpty(); i++) {
+            if (items.get(i).isEmpty()) {
+                items.set(i, remainder.split(remainder.getCount()));
+            }
+        }
+        return remainder.isEmpty() ? ItemStack.EMPTY : remainder;
+    }
+
     // ------------------------------------------------------------------
     // Container
     // ------------------------------------------------------------------
@@ -190,10 +252,80 @@ public class AutoCutterBlockEntity extends BlockEntity
     @Override public void clearContent() { items.replaceAll(ignored -> ItemStack.EMPTY); setChanged(); }
 
     // ------------------------------------------------------------------
-    // KitchenItemProcessorHolder
+    // KitchenStation
     // ------------------------------------------------------------------
 
-    public KitchenItemProcessor getKitchenItemProcessor() { return processor; }
+    @Override
+    public KitchenStationType stationType() {
+        return KitchenStationType.CUTTING_BOARD;
+    }
+
+    @Override
+    public int queueCapacity() {
+        return 1;
+    }
+
+    @Override
+    public int queuedJobCount() {
+        return queuedJobActive ? 1 : 0;
+    }
+
+    @Override
+    public KitchenStationStatus stationStatus() {
+        if (outputBlocked) {
+            return KitchenStationStatus.OUTPUT_BLOCKED;
+        }
+        if (queuedJobActive || activeTimer > 0 || !pendingResults.isEmpty()) {
+            return KitchenStationStatus.RUNNING;
+        }
+        return KitchenStationStatus.IDLE;
+    }
+
+    @Override
+    public KitchenStationAcceptResult canAccept(KitchenStationJob job) {
+        if (job.stationType() != KitchenStationType.CUTTING_BOARD) {
+            return KitchenStationAcceptResult.blocked(PlanningBlocker.MISSING_STATION);
+        }
+        if (outputBlocked) {
+            return KitchenStationAcceptResult.blocked(PlanningBlocker.OUTPUT_STORAGE_FULL);
+        }
+        if (isBusy()) {
+            return KitchenStationAcceptResult.blocked(PlanningBlocker.STATION_QUEUE_FULL);
+        }
+        return KitchenStationAcceptResult.acceptedResult();
+    }
+
+    @Override
+    public KitchenStationAcceptResult accept(KitchenStationJob job) {
+        KitchenStationAcceptResult result = canAccept(job);
+        if (!result.accepted()) {
+            return result;
+        }
+
+        queuedJobActive = true;
+        outputBlocked = false;
+        pendingResults.clear();
+        pendingResults.addAll(job.outputs());
+        activeTimer = Math.max(1, job.processingTime());
+
+        if (level != null) {
+            BlockState state = getBlockState();
+            if (state.hasProperty(AutoCutterBlock.ACTIVE)) {
+                level.setBlock(worldPosition, state.setValue(AutoCutterBlock.ACTIVE, true), 3);
+            }
+        }
+        setChanged();
+        return KitchenStationAcceptResult.acceptedResult();
+    }
+
+    @Override
+    public BlockPos stationPos() {
+        return worldPosition.immutable();
+    }
+
+    private boolean isBusy() {
+        return queuedJobActive || activeTimer > 0 || !pendingResults.isEmpty();
+    }
 
     // ------------------------------------------------------------------
     // MenuProvider / Nameable
@@ -230,9 +362,11 @@ public class AutoCutterBlockEntity extends BlockEntity
         }
         items.replaceAll(ignored -> ItemStack.EMPTY);
         pendingResults.clear();
+        queuedJobActive = false;
+        outputBlocked = false;
     }
 
-    public boolean isActive() { return activeTimer > 0; }
+    public boolean isActive() { return activeTimer > 0 || queuedJobActive; }
 
     // ------------------------------------------------------------------
     // NBT
@@ -243,6 +377,7 @@ public class AutoCutterBlockEntity extends BlockEntity
         super.saveAdditional(tag, registries);
         ContainerHelper.saveAllItems(tag, items, registries);
         tag.putInt("ActiveTimer", activeTimer);
+        tag.putBoolean("OutputBlocked", outputBlocked);
         if (!pendingResults.isEmpty()) {
             CompoundTag pending = new CompoundTag();
             pending.putInt("Count", pendingResults.size());
@@ -260,6 +395,7 @@ public class AutoCutterBlockEntity extends BlockEntity
         super.loadAdditional(tag, registries);
         ContainerHelper.loadAllItems(tag, items, registries);
         activeTimer = tag.getInt("ActiveTimer");
+        outputBlocked = tag.getBoolean("OutputBlocked");
         pendingResults.clear();
         if (tag.contains("PendingResults")) {
             CompoundTag pending = tag.getCompound("PendingResults");
@@ -270,6 +406,10 @@ public class AutoCutterBlockEntity extends BlockEntity
                             .ifPresent(pendingResults::add);
                 }
             }
+        }
+        queuedJobActive = !pendingResults.isEmpty();
+        if (!queuedJobActive) {
+            outputBlocked = false;
         }
         if (tag.contains("CustomName"))
             customName = Component.Serializer.fromJson(tag.getString("CustomName"), registries);
