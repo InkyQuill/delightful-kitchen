@@ -3,7 +3,6 @@ package net.inkyquill.delightfulkitchen.compat;
 import net.blay09.mods.cookingforblockheads.api.CookingForBlockheadsAPI;
 import net.blay09.mods.cookingforblockheads.api.KitchenItemProcessor;
 import net.inkyquill.delightfulkitchen.DelightfulKitchen;
-import net.inkyquill.delightfulkitchen.block.entity.ModBlockEntities;
 import net.inkyquill.delightfulkitchen.recipe.CookingPotRecipeHandler;
 import net.inkyquill.delightfulkitchen.recipe.CuttingBoardRecipeHandler;
 import net.inkyquill.delightfulkitchen.recipe.GrillRecipeHandler;
@@ -61,8 +60,5 @@ public class FarmersDelightCompat {
 
     /** Called from {@link RegisterCapabilitiesEvent} to expose our block entities as KitchenItemProcessors. */
     public static void registerCapabilities(RegisterCapabilitiesEvent event) {
-        event.registerBlockEntity(KITCHEN_ITEM_PROCESSOR,
-                ModBlockEntities.POT_STAND.get(),
-                (be, ctx) -> be.getKitchenItemProcessor());
     }
 }
