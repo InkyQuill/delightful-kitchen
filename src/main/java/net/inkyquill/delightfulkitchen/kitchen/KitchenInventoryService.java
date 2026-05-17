@@ -1,12 +1,15 @@
 package net.inkyquill.delightfulkitchen.kitchen;
 
 import net.inkyquill.delightfulkitchen.kitchen.recipe.KitchenInventorySnapshot;
+import net.inkyquill.delightfulkitchen.kitchen.recipe.PlannedIngredient;
 import net.minecraft.core.NonNullList;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.Ingredient;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 public class KitchenInventoryService {
     private final List<KitchenInventoryEndpoint> endpoints;
@@ -80,6 +83,56 @@ public class KitchenInventoryService {
             }
         }
         return new KitchenInventorySnapshot(stacks);
+    }
+
+    public Optional<List<ItemStack>> extractIngredient(PlannedIngredient ingredient, boolean simulate) {
+        List<ItemStack> extracted = new ArrayList<>();
+        int remaining = ingredient.count();
+        Ingredient matcher = ingredient.ingredient();
+
+        for (KitchenInventoryEndpoint endpoint : endpoints) {
+            for (int slot = 0; slot < endpoint.size() && remaining > 0; slot++) {
+                ItemStack stack = endpoint.get(slot);
+                if (stack.isEmpty() || !matcher.test(stack)) {
+                    continue;
+                }
+
+                int amount = Math.min(remaining, stack.getCount());
+                ItemStack taken = endpoint.extract(slot, amount, simulate);
+                if (!taken.isEmpty()) {
+                    extracted.add(taken);
+                    remaining -= taken.getCount();
+                }
+            }
+        }
+
+        if (remaining > 0) {
+            if (!simulate) {
+                for (ItemStack stack : extracted) {
+                    insert(stack, false);
+                }
+            }
+            return Optional.empty();
+        }
+        return Optional.of(List.copyOf(extracted));
+    }
+
+    public boolean canInsertAll(List<ItemStack> stacks) {
+        for (ItemStack stack : stacks) {
+            if (!insert(stack, true).isEmpty()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public boolean insertAll(List<ItemStack> stacks) {
+        for (ItemStack stack : stacks) {
+            if (!insert(stack, false).isEmpty()) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public NonNullList<ItemStack> visibleStacks(int limit) {
