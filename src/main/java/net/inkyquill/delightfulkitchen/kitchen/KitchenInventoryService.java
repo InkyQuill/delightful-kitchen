@@ -98,6 +98,9 @@ public class KitchenInventoryService {
         List<ExtractedSlot> extracted = new ArrayList<>();
         for (ExtractedSlot plannedSlot : planned.orElseThrow()) {
             ItemStack taken = plannedSlot.endpoint.extract(plannedSlot.slot, plannedSlot.stack.getCount(), false);
+            if (!taken.isEmpty()) {
+                extracted.add(new ExtractedSlot(plannedSlot.endpoint, plannedSlot.slot, taken));
+            }
             if (taken.getCount() != plannedSlot.stack.getCount()
                     || !ItemStack.isSameItemSameComponents(taken, plannedSlot.stack)) {
                 rollbackExtracted(extracted);
@@ -106,7 +109,6 @@ public class KitchenInventoryService {
                                 + " slot " + plannedSlot.slot
                 );
             }
-            extracted.add(new ExtractedSlot(plannedSlot.endpoint, plannedSlot.slot, taken));
         }
 
         return Optional.of(extractedStacks(extracted));
@@ -226,6 +228,10 @@ public class KitchenInventoryService {
     }
 
     private int simulatedTransfer(SimulatedSlot slot, ItemStack remainder, ItemStack limitPrototype) {
+        if (slot.endpoint.usesItemHandler()
+                && !ItemStack.isSameItemSameComponents(slot.endpoint.get(slot.slot), slot.stack)) {
+            return 0;
+        }
         ItemStack simulatedRemainder = slot.endpoint.insert(slot.slot, remainder, true);
         int endpointAccepted = remainder.getCount() - simulatedRemainder.getCount();
         int simulatedCapacity = slot.endpoint.getSlotLimit(slot.slot, limitPrototype) - slot.stack.getCount();

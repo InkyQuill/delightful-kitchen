@@ -46,6 +46,10 @@ public final class KitchenInventoryEndpoint {
         return Math.min(itemHandler.getSlotLimit(slot), stack.getMaxStackSize());
     }
 
+    boolean usesItemHandler() {
+        return itemHandler != null;
+    }
+
     public ItemStack extract(int slot, int amount, boolean simulate) {
         if (itemHandler != null) {
             return itemHandler.extractItem(slot, amount, simulate);

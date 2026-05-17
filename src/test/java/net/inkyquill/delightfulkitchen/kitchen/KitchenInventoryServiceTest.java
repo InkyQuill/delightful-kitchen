@@ -19,6 +19,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class KitchenInventoryServiceTest {
@@ -91,6 +92,18 @@ class KitchenInventoryServiceTest {
     }
 
     @Test
+    void extractionMismatchRestoresCurrentTakenStack() {
+        ShortRealExtractionItemHandler itemHandler = new ShortRealExtractionItemHandler(new ItemStack(Items.WHEAT, 2));
+        KitchenInventoryService service = new KitchenInventoryService(List.of(
+                new KitchenInventoryEndpoint(BlockPos.ZERO, itemHandler)
+        ));
+
+        assertThrows(IllegalStateException.class, () -> service.extractIngredient(
+                new PlannedIngredient(Ingredient.of(Items.WHEAT), 2), false));
+        assertEquals(2, itemHandler.getStackInSlot(0).getCount());
+    }
+
+    @Test
     void canInsertAllSimulatesWithoutMutating() {
         SimpleContainer container = new SimpleContainer(1);
         KitchenInventoryService service = new KitchenInventoryService(List.of(
@@ -154,6 +167,17 @@ class KitchenInventoryServiceTest {
 
         assertFalse(service.insertAll(List.of(new ItemStack(Items.BREAD), new ItemStack(Items.APPLE))));
         assertTrue(container.getItem(0).isEmpty());
+    }
+
+    @Test
+    void insertAllDoesNotPartiallyInsertWhenItemHandlerRejectsSecondInsert() {
+        EmptySlotOnlyItemHandler itemHandler = new EmptySlotOnlyItemHandler();
+        KitchenInventoryService service = new KitchenInventoryService(List.of(
+                new KitchenInventoryEndpoint(BlockPos.ZERO, itemHandler)
+        ));
+
+        assertFalse(service.insertAll(List.of(new ItemStack(Items.BREAD), new ItemStack(Items.BREAD))));
+        assertTrue(itemHandler.getStackInSlot(0).isEmpty());
     }
 
     private static final class RejectAppleContainer extends SimpleContainer {
@@ -238,6 +262,67 @@ class KitchenInventoryServiceTest {
         }
     }
 
+    private static final class ShortRealExtractionItemHandler implements IItemHandler {
+        private ItemStack stack;
+
+        private ShortRealExtractionItemHandler(ItemStack stack) {
+            this.stack = stack.copy();
+        }
+
+        @Override
+        public int getSlots() {
+            return 1;
+        }
+
+        @Override
+        public ItemStack getStackInSlot(int slot) {
+            return stack;
+        }
+
+        @Override
+        public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
+            if (this.stack.isEmpty()) {
+                if (!simulate) {
+                    this.stack = stack.copy();
+                }
+                return ItemStack.EMPTY;
+            }
+            if (!ItemStack.isSameItemSameComponents(this.stack, stack)) {
+                return stack;
+            }
+            if (!simulate) {
+                this.stack.grow(stack.getCount());
+            }
+            return ItemStack.EMPTY;
+        }
+
+        @Override
+        public ItemStack extractItem(int slot, int amount, boolean simulate) {
+            if (stack.isEmpty() || amount <= 0) {
+                return ItemStack.EMPTY;
+            }
+            int extracted = simulate ? Math.min(amount, stack.getCount()) : 1;
+            ItemStack result = stack.copyWithCount(extracted);
+            if (!simulate) {
+                stack.shrink(extracted);
+                if (stack.isEmpty()) {
+                    stack = ItemStack.EMPTY;
+                }
+            }
+            return result;
+        }
+
+        @Override
+        public int getSlotLimit(int slot) {
+            return 64;
+        }
+
+        @Override
+        public boolean isItemValid(int slot, ItemStack stack) {
+            return true;
+        }
+    }
+
     private static final class RejectAppleItemHandler implements IItemHandler {
         private ItemStack stack = ItemStack.EMPTY;
 
@@ -254,6 +339,46 @@ class KitchenInventoryServiceTest {
         @Override
         public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
             if (stack.is(Items.APPLE)) {
+                return stack;
+            }
+            if (!simulate) {
+                this.stack = stack.copy();
+            }
+            return ItemStack.EMPTY;
+        }
+
+        @Override
+        public ItemStack extractItem(int slot, int amount, boolean simulate) {
+            return ItemStack.EMPTY;
+        }
+
+        @Override
+        public int getSlotLimit(int slot) {
+            return 64;
+        }
+
+        @Override
+        public boolean isItemValid(int slot, ItemStack stack) {
+            return true;
+        }
+    }
+
+    private static final class EmptySlotOnlyItemHandler implements IItemHandler {
+        private ItemStack stack = ItemStack.EMPTY;
+
+        @Override
+        public int getSlots() {
+            return 1;
+        }
+
+        @Override
+        public ItemStack getStackInSlot(int slot) {
+            return stack;
+        }
+
+        @Override
+        public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
+            if (!this.stack.isEmpty()) {
                 return stack;
             }
             if (!simulate) {
