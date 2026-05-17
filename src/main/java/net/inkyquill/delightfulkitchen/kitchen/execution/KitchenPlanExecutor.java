@@ -66,8 +66,7 @@ public final class KitchenPlanExecutor {
             KitchenStationJob job = extracted.job().orElseThrow();
             if (job.stationType() == KitchenStationType.CRAFTING) {
                 if (!inventory.insertAll(job.outputs())) {
-                    assertReleasedBorrowedContainer(extracted.borrowedContainer());
-                    rollbackExtractedJob(job, false);
+                    rollbackExtractedJobWithBorrowedContainer(job, extracted.borrowedContainer());
                     rollback(extractedJobs);
                     return KitchenPlanExecutionResult.blocked(PlanningBlocker.OUTPUT_STORAGE_FULL);
                 }
@@ -399,10 +398,15 @@ public final class KitchenPlanExecutor {
         assertNoAmbiguousInstantOutputRollback(rollbackJobs);
 
         removeInstantOutputs(job.outputs());
+        rollbackExtractedJobWithBorrowedContainer(job, borrowedContainer);
+        rollback(extractedJobs);
+    }
+
+    private void rollbackExtractedJobWithBorrowedContainer(KitchenStationJob job,
+                                                           Optional<BorrowedContainer> borrowedContainer) {
         List<ItemStack> inputsAndBorrowedContainer = new ArrayList<>(job.inputs());
         borrowedContainer.map(BorrowedContainer::stack).ifPresent(inputsAndBorrowedContainer::add);
         rollbackExtractedParts(inputsAndBorrowedContainer, job.servingContainer(), job.fuel());
-        rollback(extractedJobs);
     }
 
     private boolean releaseBorrowedContainer(Optional<BorrowedContainer> borrowedContainer) {

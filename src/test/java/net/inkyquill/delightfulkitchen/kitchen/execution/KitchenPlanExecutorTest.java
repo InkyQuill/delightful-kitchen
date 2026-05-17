@@ -374,6 +374,30 @@ class KitchenPlanExecutorTest {
     }
 
     @Test
+    void preservesBorrowedContainerWhenOutputInsertionFailsAndReleaseNeedsRestoredInputs() {
+        InputDependentContainer source = new InputDependentContainer(
+                new ItemStack(Items.WHEAT),
+                new ItemStack(Items.BUCKET)
+        );
+        InsertFailsInventoryService inventory = new InsertFailsInventoryService(
+                List.of(new KitchenInventoryEndpoint(BlockPos.ZERO, source))
+        );
+        FakeStation station = new FakeStation(KitchenStationType.GRILL, 1, 0);
+        KitchenScanResult scan = scan(true, false);
+        RecipePlan plan = plan(recipeWithUtility("dough", KitchenUtilityRequirement.WATER,
+                List.of(ingredient(Items.WHEAT, 1)), List.of(new ItemStack(Items.BREAD))));
+
+        KitchenPlanExecutionResult result = executor(inventory, station, scan)
+                .confirm(plan, KitchenPlanFingerprint.of(scan, inventory.snapshot()));
+
+        assertFalse(result.queued());
+        assertTrue(result.blockers().contains(PlanningBlocker.OUTPUT_STORAGE_FULL));
+        assertEquals(1, inventory.count(new ItemStack(Items.WHEAT)));
+        assertEquals(1, inventory.count(new ItemStack(Items.BUCKET)));
+        assertEquals(0, inventory.count(new ItemStack(Items.BREAD)));
+    }
+
+    @Test
     void rollsBackInstantUtilityCraftingWhenBorrowedContainerCannotReleaseAfterOutputInsertion() {
         FilteredSimpleContainer source = new FilteredSimpleContainer(
                 new ItemStack(Items.WHEAT),
