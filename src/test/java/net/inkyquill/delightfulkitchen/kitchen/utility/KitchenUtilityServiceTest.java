@@ -11,6 +11,7 @@ import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.neoforged.fml.loading.LoadingModList;
+import net.neoforged.neoforge.items.IItemHandler;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -137,6 +138,17 @@ class KitchenUtilityServiceTest {
                 service(scan(false, false), new SimpleContainer(1)).blockersFor(KitchenUtilityRequirement.SNOWBALL));
     }
 
+    @Test
+    void blockersIgnoreVisibleButUnextractableContainers() {
+        KitchenUtilityService service = new KitchenUtilityService(scan(true, false), new KitchenInventoryService(List.of(
+                new KitchenInventoryEndpoint(BlockPos.ZERO, new UnextractableItemHandler(new ItemStack(Items.BUCKET)))
+        )));
+
+        assertEquals(EnumSet.of(PlanningBlocker.MISSING_WATER_CONTAINER),
+                service.blockersFor(KitchenUtilityRequirement.WATER));
+        assertTrue(service.borrow(KitchenUtilityRequirement.WATER).isEmpty());
+    }
+
     private static KitchenUtilityService service(KitchenScanResult scan, SimpleContainer container) {
         return new KitchenUtilityService(scan, inventory(container));
     }
@@ -159,6 +171,44 @@ class KitchenUtilityServiceTest {
         @Override
         public boolean canPlaceItem(int slot, ItemStack stack) {
             return !stack.is(Items.BUCKET);
+        }
+    }
+
+    private static final class UnextractableItemHandler implements IItemHandler {
+        private final ItemStack stack;
+
+        private UnextractableItemHandler(ItemStack stack) {
+            this.stack = stack.copy();
+        }
+
+        @Override
+        public int getSlots() {
+            return 1;
+        }
+
+        @Override
+        public ItemStack getStackInSlot(int slot) {
+            return stack;
+        }
+
+        @Override
+        public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
+            return stack;
+        }
+
+        @Override
+        public ItemStack extractItem(int slot, int amount, boolean simulate) {
+            return ItemStack.EMPTY;
+        }
+
+        @Override
+        public int getSlotLimit(int slot) {
+            return 64;
+        }
+
+        @Override
+        public boolean isItemValid(int slot, ItemStack stack) {
+            return true;
         }
     }
 }

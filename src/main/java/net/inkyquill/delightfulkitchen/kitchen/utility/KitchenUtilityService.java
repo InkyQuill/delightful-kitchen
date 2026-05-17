@@ -1,8 +1,12 @@
 package net.inkyquill.delightfulkitchen.kitchen.utility;
 
+import net.inkyquill.delightfulkitchen.DelightfulKitchen;
 import net.inkyquill.delightfulkitchen.kitchen.KitchenInventoryService;
 import net.inkyquill.delightfulkitchen.kitchen.KitchenScanResult;
 import net.inkyquill.delightfulkitchen.kitchen.recipe.PlanningBlocker;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.tags.TagKey;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
@@ -12,6 +16,11 @@ import java.util.Optional;
 import java.util.function.Predicate;
 
 public final class KitchenUtilityService {
+    public static final TagKey<Item> WATER_CONTAINERS =
+            TagKey.create(Registries.ITEM, DelightfulKitchen.id("water_containers"));
+    public static final TagKey<Item> COLD_CONTAINERS =
+            TagKey.create(Registries.ITEM, DelightfulKitchen.id("cold_containers"));
+
     private final KitchenScanResult scan;
     private final KitchenInventoryService inventory;
 
@@ -27,21 +36,21 @@ public final class KitchenUtilityService {
             }
             case WATER -> {
                 addWaterProviderBlocker(blockers);
-                if (!hasContainer(this::isWaterContainer)) {
+                if (!hasReservable(this::isWaterContainer)) {
                     blockers.add(PlanningBlocker.MISSING_WATER_CONTAINER);
                 }
             }
             case ICE -> {
                 addFreezerBlocker(blockers);
                 addWaterProviderBlocker(blockers);
-                if (!hasContainer(KitchenUtilityService::isBucket)) {
+                if (!hasReservable(KitchenUtilityService::isIceContainer)) {
                     blockers.add(PlanningBlocker.MISSING_ICE_CONTAINER);
                 }
             }
             case SNOWBALL -> {
                 addFreezerBlocker(blockers);
                 addWaterProviderBlocker(blockers);
-                if (!hasContainer(KitchenUtilityService::isGlassBottle)) {
+                if (!hasReservable(KitchenUtilityService::isSnowballContainer)) {
                     blockers.add(PlanningBlocker.MISSING_SNOWBALL_CONTAINER);
                 }
             }
@@ -57,8 +66,8 @@ public final class KitchenUtilityService {
         return switch (requirement) {
             case NONE -> Optional.empty();
             case WATER -> inventory.borrowOne(this::isWaterContainer);
-            case ICE -> inventory.borrowOne(KitchenUtilityService::isBucket);
-            case SNOWBALL -> inventory.borrowOne(KitchenUtilityService::isGlassBottle);
+            case ICE -> inventory.borrowOne(KitchenUtilityService::isIceContainer);
+            case SNOWBALL -> inventory.borrowOne(KitchenUtilityService::isSnowballContainer);
         };
     }
 
@@ -82,12 +91,24 @@ public final class KitchenUtilityService {
         }
     }
 
-    private boolean hasContainer(Predicate<ItemStack> matcher) {
-        return inventory.snapshot().stacks().stream().anyMatch(matcher);
+    private boolean hasReservable(Predicate<ItemStack> matcher) {
+        return inventory.hasReservable(matcher);
     }
 
     private boolean isWaterContainer(ItemStack stack) {
-        return isBucket(stack) || isGlassBottle(stack);
+        return stack.is(WATER_CONTAINERS) || isBucket(stack) || isGlassBottle(stack);
+    }
+
+    private static boolean isIceContainer(ItemStack stack) {
+        return isBucket(stack) && isColdContainer(stack);
+    }
+
+    private static boolean isSnowballContainer(ItemStack stack) {
+        return isGlassBottle(stack) && isColdContainer(stack);
+    }
+
+    private static boolean isColdContainer(ItemStack stack) {
+        return stack.is(COLD_CONTAINERS) || isBucket(stack) || isGlassBottle(stack);
     }
 
     private static boolean isBucket(ItemStack stack) {

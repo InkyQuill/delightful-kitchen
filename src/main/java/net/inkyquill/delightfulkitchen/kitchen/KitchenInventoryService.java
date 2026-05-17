@@ -15,6 +15,8 @@ import java.util.Optional;
 import java.util.function.Predicate;
 
 public class KitchenInventoryService {
+    private static final BorrowKey BORROW_KEY = new BorrowKey();
+
     private final List<KitchenInventoryEndpoint> endpoints;
 
     public KitchenInventoryService(Collection<KitchenInventoryEndpoint> endpoints) {
@@ -75,32 +77,23 @@ public class KitchenInventoryService {
         return remainder.isEmpty() ? ItemStack.EMPTY : remainder;
     }
 
-    public Optional<BorrowedContainer> borrowOne(Predicate<ItemStack> matcher) {
-        Objects.requireNonNull(matcher, "matcher");
-        for (KitchenInventoryEndpoint endpoint : endpoints) {
-            for (int slot = 0; slot < endpoint.size(); slot++) {
-                ItemStack stack = endpoint.get(slot);
-                if (stack.isEmpty() || !matcher.test(stack)) {
-                    continue;
-                }
+    public boolean hasReservable(Predicate<ItemStack> matcher) {
+        return findReservable(matcher).isPresent();
+    }
 
-                ItemStack extracted = endpoint.extract(slot, 1, false);
-                if (extracted.isEmpty()) {
-                    continue;
-                }
-                if (extracted.getCount() != 1 || !matcher.test(extracted)) {
-                    ItemStack remainder = endpoint.insert(slot, extracted, false);
-                    if (!remainder.isEmpty()) {
-                        throw new IllegalStateException("Failed to restore borrowed container to "
-                                + endpoint.pos() + " slot " + slot);
-                    }
-                    throw new IllegalStateException("Extracted stack did not match borrow request from "
-                            + endpoint.pos() + " slot " + slot);
-                }
-                return Optional.of(new BorrowedContainer(extracted, endpoint, slot));
+    public Optional<BorrowedContainer> borrowOne(Predicate<ItemStack> matcher) {
+        return findReservable(matcher).map(planned -> {
+            ItemStack extracted = planned.endpoint.extract(planned.slot, 1, false);
+            if (extracted.isEmpty()
+                    || extracted.getCount() != 1
+                    || !ItemStack.isSameItemSameComponents(extracted, planned.stack)
+                    || !matcher.test(extracted)) {
+                restoreUnexpectedBorrow(planned, extracted);
+                throw new IllegalStateException("Failed to extract planned borrowed container from "
+                        + planned.endpoint.pos() + " slot " + planned.slot);
             }
-        }
-        return Optional.empty();
+            return BorrowedContainer.create(extracted, planned.endpoint, planned.slot, BORROW_KEY);
+        });
     }
 
     public KitchenInventorySnapshot snapshot() {
@@ -359,5 +352,42 @@ public class KitchenInventoryService {
 
     private static boolean matches(ItemStack prototype, ItemStack stack) {
         return !stack.isEmpty() && ItemStack.isSameItemSameComponents(prototype, stack);
+    }
+
+    private Optional<ReservableSlot> findReservable(Predicate<ItemStack> matcher) {
+        Objects.requireNonNull(matcher, "matcher");
+        for (KitchenInventoryEndpoint endpoint : endpoints) {
+            for (int slot = 0; slot < endpoint.size(); slot++) {
+                ItemStack stack = endpoint.get(slot);
+                if (stack.isEmpty() || !matcher.test(stack)) {
+                    continue;
+                }
+
+                ItemStack extracted = endpoint.extract(slot, 1, true);
+                if (extracted.getCount() == 1 && matcher.test(extracted)) {
+                    return Optional.of(new ReservableSlot(endpoint, slot, extracted));
+                }
+            }
+        }
+        return Optional.empty();
+    }
+
+    private void restoreUnexpectedBorrow(ReservableSlot planned, ItemStack extracted) {
+        if (extracted.isEmpty()) {
+            return;
+        }
+        ItemStack remainder = planned.endpoint.insert(planned.slot, extracted, false);
+        if (!remainder.isEmpty()) {
+            throw new IllegalStateException("Failed to restore borrowed container to "
+                    + planned.endpoint.pos() + " slot " + planned.slot);
+        }
+    }
+
+    private record ReservableSlot(KitchenInventoryEndpoint endpoint, int slot, ItemStack stack) {
+    }
+
+    public static final class BorrowKey {
+        private BorrowKey() {
+        }
     }
 }
