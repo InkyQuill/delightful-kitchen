@@ -158,31 +158,31 @@ public class AutoCutterBlockEntity extends BlockEntity
     }
 
     private void finishQueuedJob(Level level, BlockPos pos, BlockState state) {
-        List<ItemStack> remainingResults = new ArrayList<>();
-        outputBlocked = false;
-
+        List<ItemStack> routedRemainders = new ArrayList<>();
         for (ItemStack output : pendingResults) {
             if (output.isEmpty()) {
                 continue;
             }
-            ItemStack remainder = routeOutput(level, output);
-            if (!remainder.isEmpty()) {
-                remainder = placeInOutputSlots(remainder);
-            }
-            if (!remainder.isEmpty()) {
-                remainingResults.add(remainder);
-                outputBlocked = true;
-            }
+            routedRemainders.add(routeOutput(level, output));
         }
 
+        finishQueuedJobWithRemainders(routedRemainders);
+        if (state.hasProperty(AutoCutterBlock.ACTIVE)) {
+            level.setBlock(pos, state.setValue(AutoCutterBlock.ACTIVE, outputBlocked), 3);
+        }
+    }
+
+    void finishQueuedJobWithRemainders(List<ItemStack> routedRemainders) {
         pendingResults.clear();
-        pendingResults.addAll(remainingResults);
+        for (ItemStack remainder : routedRemainders) {
+            if (!remainder.isEmpty()) {
+                pendingResults.add(remainder.copy());
+            }
+        }
+        outputBlocked = !pendingResults.isEmpty();
         if (!outputBlocked) {
             queuedJobActive = false;
             activeTimer = 0;
-        }
-        if (state.hasProperty(AutoCutterBlock.ACTIVE)) {
-            level.setBlock(pos, state.setValue(AutoCutterBlock.ACTIVE, outputBlocked), 3);
         }
         setChanged();
     }
@@ -192,26 +192,6 @@ public class AutoCutterBlockEntity extends BlockEntity
         var endpoints = KitchenServices.inventoryEndpoints(level, scan, worldPosition);
         var inventory = new KitchenInventoryService(endpoints);
         return inventory.insert(stack, false);
-    }
-
-    private ItemStack placeInOutputSlots(ItemStack stack) {
-        ItemStack remainder = stack.copy();
-        for (int i = SLOT_OUTPUT_START; i <= SLOT_OUTPUT_END && !remainder.isEmpty(); i++) {
-            ItemStack existing = items.get(i);
-            if (!existing.isEmpty() && ItemStack.isSameItemSameComponents(existing, remainder)) {
-                int transfer = Math.min(remainder.getCount(), existing.getMaxStackSize() - existing.getCount());
-                if (transfer > 0) {
-                    existing.grow(transfer);
-                    remainder.shrink(transfer);
-                }
-            }
-        }
-        for (int i = SLOT_OUTPUT_START; i <= SLOT_OUTPUT_END && !remainder.isEmpty(); i++) {
-            if (items.get(i).isEmpty()) {
-                items.set(i, remainder.split(remainder.getCount()));
-            }
-        }
-        return remainder.isEmpty() ? ItemStack.EMPTY : remainder;
     }
 
     // ------------------------------------------------------------------
@@ -377,6 +357,7 @@ public class AutoCutterBlockEntity extends BlockEntity
         super.saveAdditional(tag, registries);
         ContainerHelper.saveAllItems(tag, items, registries);
         tag.putInt("ActiveTimer", activeTimer);
+        tag.putBoolean("QueuedJobActive", queuedJobActive);
         tag.putBoolean("OutputBlocked", outputBlocked);
         if (!pendingResults.isEmpty()) {
             CompoundTag pending = new CompoundTag();
@@ -395,6 +376,7 @@ public class AutoCutterBlockEntity extends BlockEntity
         super.loadAdditional(tag, registries);
         ContainerHelper.loadAllItems(tag, items, registries);
         activeTimer = tag.getInt("ActiveTimer");
+        queuedJobActive = tag.getBoolean("QueuedJobActive");
         outputBlocked = tag.getBoolean("OutputBlocked");
         pendingResults.clear();
         if (tag.contains("PendingResults")) {
@@ -407,7 +389,6 @@ public class AutoCutterBlockEntity extends BlockEntity
                 }
             }
         }
-        queuedJobActive = !pendingResults.isEmpty();
         if (!queuedJobActive) {
             outputBlocked = false;
         }

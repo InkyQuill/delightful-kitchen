@@ -1,10 +1,10 @@
 package net.inkyquill.delightfulkitchen.kitchen.station;
 
 import net.inkyquill.delightfulkitchen.block.entity.AutoCutterBlockEntity;
+import net.inkyquill.delightfulkitchen.block.entity.AutoCutterTestAccess;
 import net.inkyquill.delightfulkitchen.kitchen.recipe.KitchenStationType;
 import net.inkyquill.delightfulkitchen.kitchen.recipe.PlanningBlocker;
 import net.minecraft.SharedConstants;
-import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -13,13 +13,10 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.Bootstrap;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.neoforged.fml.loading.LoadingModList;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import java.lang.reflect.Constructor;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -80,17 +77,42 @@ class AutoCutterStationTest {
                 List.copyOf(loadedStation.canAccept(job(KitchenStationType.CUTTING_BOARD)).blockers()));
     }
 
+    @Test
+    void queuedOutputRemainderStaysBlockedEvenWhenInternalSlotsAreEmpty() {
+        AutoCutterBlockEntity autoCutter = newAutoCutter();
+        KitchenStation station = assertInstanceOf(KitchenStation.class, autoCutter);
+        station.accept(job(KitchenStationType.CUTTING_BOARD));
+
+        AutoCutterTestAccess.finishQueuedJobWithRemainders(autoCutter, List.of(new ItemStack(Items.STICK, 2)));
+        CompoundTag tag = autoCutter.saveCustomOnly(registries());
+
+        assertEquals(1, station.queuedJobCount());
+        assertEquals(KitchenStationStatus.OUTPUT_BLOCKED, station.stationStatus());
+        assertTrue(autoCutter.getItem(AutoCutterBlockEntity.SLOT_OUTPUT_START).isEmpty());
+        assertTrue(tag.getBoolean("QueuedJobActive"));
+        assertTrue(tag.getBoolean("OutputBlocked"));
+        assertEquals(1, tag.getCompound("PendingResults").getInt("Count"));
+    }
+
+    @Test
+    void manualPendingResultsDoNotRestoreAsQueuedJob() {
+        CompoundTag tag = new CompoundTag();
+        tag.putInt("ActiveTimer", 20);
+        tag.putBoolean("QueuedJobActive", false);
+        tag.put("PendingResults", pendingResultsTag(new ItemStack(Items.STICK, 2)));
+
+        AutoCutterBlockEntity loaded = newAutoCutter();
+        loaded.loadCustomOnly(tag, registries());
+        KitchenStation station = assertInstanceOf(KitchenStation.class, loaded);
+
+        assertEquals(0, station.queuedJobCount());
+        assertEquals(KitchenStationStatus.RUNNING, station.stationStatus());
+        assertEquals(List.of(PlanningBlocker.STATION_QUEUE_FULL),
+                List.copyOf(station.canAccept(job(KitchenStationType.CUTTING_BOARD)).blockers()));
+    }
+
     private static AutoCutterBlockEntity newAutoCutter() {
-        try {
-            Constructor<AutoCutterBlockEntity> constructor = AutoCutterBlockEntity.class.getDeclaredConstructor(
-                    BlockEntityType.class,
-                    BlockPos.class,
-                    net.minecraft.world.level.block.state.BlockState.class);
-            constructor.setAccessible(true);
-            return constructor.newInstance(BlockEntityType.CHEST, BlockPos.ZERO, Blocks.CHEST.defaultBlockState());
-        } catch (ReflectiveOperationException exception) {
-            throw new AssertionError("failed to construct AutoCutterBlockEntity for unit test", exception);
-        }
+        return AutoCutterTestAccess.newAutoCutter();
     }
 
     private static KitchenStationJob job(KitchenStationType type) {
@@ -108,5 +130,14 @@ class AutoCutterStationTest {
     private static HolderLookup.Provider registries() {
         return HolderLookup.Provider.create(BuiltInRegistries.REGISTRY.stream()
                 .map(registry -> ((Registry<?>) registry).asLookup()));
+    }
+
+    private static CompoundTag pendingResultsTag(ItemStack... stacks) {
+        CompoundTag pending = new CompoundTag();
+        pending.putInt("Count", stacks.length);
+        for (int i = 0; i < stacks.length; i++) {
+            pending.put("Item" + i, stacks[i].save(registries()));
+        }
+        return pending;
     }
 }
