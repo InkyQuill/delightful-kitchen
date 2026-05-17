@@ -1,13 +1,13 @@
 # Mod Rename & Kitchen Utilities Specification
 
 Date: 2026-05-16
-Status: Rename complete; utilities still draft
+Status: Rename complete; Water Provider and Freezer complete for Milestone 3 v1
 
 ## Part 1: Mod Rename — Delightful Kitchen
 
 > **Note:** The name "Delightful" is already taken by an existing Farmer's Delight addon mod. The new name is **Delightful Kitchen** to avoid conflict.
 
-The rename portion of this specification has been implemented. The Water Provider and Freezer portions remain future work.
+The rename portion of this specification has been implemented. The Water Provider and Freezer portions are implemented for Milestone 3 v1 with explicit vanilla container handling.
 
 The project has not had a public release, so the rename is allowed to be a breaking prototype-world change.
 
@@ -122,7 +122,7 @@ The container is the **limiting factor**: a kitchen with 3 empty buckets can run
 
 ### What Counts As "Water" In Recipes
 
-Recipe adapters declare that a recipe step requires water via a `water` flag. The planner resolves this against the Water Provider. Example recipes that need water:
+The planner resolves direct shaped/shapeless crafting ingredients for `minecraft:water_bucket` against the Water Provider when no physical water bucket is available. Example recipe concepts that need water:
 
 - Farmer's Delight dough (wheat + water)
 - Farmer's Delight pasta (flour + water + egg)
@@ -199,7 +199,7 @@ Virtual recipe provision should be implemented first because it uses the same re
 - **Internal storage**: 9 slots. Ice stacks to 64; snowballs stack to 16.
 - **Priority**: recipe provision takes priority over passive production. If a recipe needs ice, any queued passive production is interrupted.
 
-The Freezer alternates between producing ice and snowballs round-robin (or the player can configure preference via a simple UI toggle).
+The Freezer alternates between producing ice and snowballs round-robin by default. The player can configure passive production with a simple UI toggle.
 
 ### Freezer Inventory
 
@@ -267,11 +267,11 @@ The Chef's Counter UI updates to show utility availability alongside floor/membe
 
 ## Recipe Planner Changes
 
-The Recipe Planner gains two new resource checks during recipe evaluation:
+The Recipe Planner gains resource checks during recipe evaluation. Milestone 3 v1 applies these checks to shaped/shapeless crafting ingredients for `minecraft:water_bucket`, `minecraft:ice`, and `minecraft:snowball`.
 
 ### Water Check
 
-For any recipe step flagged with `requiresWater = true`:
+For a shaped/shapeless crafting step that is missing a direct `minecraft:water_bucket` ingredient:
 
 1. Query kitchen scan: `hasWaterProvider()`?
 2. Query inventory: count empty buckets + empty glass bottles in Container Storage (preferred) or general kitchen inventory.
@@ -280,7 +280,7 @@ For any recipe step flagged with `requiresWater = true`:
 
 ### Ice / Snowball Check
 
-For any recipe step flagged with `requiresIce = true` or `requiresSnowball = true`:
+For a shaped/shapeless crafting step that is missing a direct `minecraft:ice` or `minecraft:snowball` ingredient:
 
 1. Query kitchen scan: `hasFreezer()` AND `hasWaterProvider()`?
 2. For ice: count empty buckets in Container Storage.
@@ -291,9 +291,9 @@ For any recipe step flagged with `requiresIce = true` or `requiresSnowball = tru
 
 ### Resource Allocation
 
-During confirmation, the planner locks the allocated containers and providers. No other recipe step can use the same container. When the step completes, the container is unlocked and returned.
+During planning, the simulated snapshot reserves allocated containers so another step cannot use the same container. During confirmation, the executor revalidates the kitchen, borrows the real container, executes the instant crafting step, and returns the container.
 
-If a player manually removes the container from storage while a recipe is queued, the step fails with a `kitchen_changed` blocker (same as other membership changes — the player must re-confirm).
+If a player manually removes the container from storage while a recipe is queued, confirmation fails with a blocker and the player must re-plan/re-confirm.
 
 ---
 

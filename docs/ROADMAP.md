@@ -59,7 +59,7 @@ Verification:
 - Focused tests for station acceptance, queue capacity, and confirmation abort behavior.
 - Game tests for basic queue execution through Auto Cutter, Grill, and Pot Stand.
 
-### 3. Kitchen Utilities: Water Provider And Freezer
+### 3. Kitchen Utilities: Water Provider And Freezer (Complete)
 
 Purpose: support water, ice, and snowball recipe requirements without reintroducing infinite-container exploits.
 
@@ -72,10 +72,12 @@ Deliverables:
 - Shared resource reservation model for borrowed buckets/bottles.
 - Freezer passive physical production of ice and snowballs after the virtual provision path is stable.
 
+Implemented Water Provider and Freezer utility blocks, scanner utility discovery, borrowed vanilla bucket/bottle reservation, planner blockers, confirmation-time borrow/release for utility-backed crafting steps, and passive Freezer production with safe container return.
+
 Out of scope:
 
 - Throughput upgrades for multiple providers/freezers.
-- Arbitrary modded fluids beyond tagged water/cold container support.
+- Arbitrary modded fluids or custom tagged containers beyond the explicit vanilla bucket/bottle v1 behavior.
 
 Verification:
 
