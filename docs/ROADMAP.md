@@ -33,7 +33,7 @@ Verification:
 - `./gradlew build`
 - A targeted grep shows no remaining accidental pre-rename identity references except intentional compatibility notes or archived docs.
 
-### 2. Queue Execution And Standalone Station Interfaces
+### 2. Queue Execution And Standalone Station Interfaces (Complete)
 
 Purpose: turn read-only planning into a usable kitchen automation loop and retire Cooking for Blockheads execution paths.
 
@@ -45,6 +45,8 @@ Deliverables:
 - Add reservation/extraction ordering for raw ingredients, intermediate outputs, serving containers, and fuel.
 - Make station capacity visible to planning: queue full, output blocked, busy/running, and missing fuel/container states.
 - Keep outputs non-destructive: blocked outputs stay in station buffers where possible.
+
+Implemented as an internal backend milestone: station jobs, confirmation-time validation, station queues, and non-destructive output handling are in place; the full recipe book UI remains Milestone 4.
 
 Out of scope:
 
