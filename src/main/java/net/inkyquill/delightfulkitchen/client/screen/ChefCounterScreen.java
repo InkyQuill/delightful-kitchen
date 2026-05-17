@@ -37,7 +37,7 @@ public class ChefCounterScreen extends AbstractContainerScreen<ChefCounterMenu> 
                 Component.translatable("gui.delightful_kitchen.chef_counter.floor_tiles", menu.getFloorCount()),
                 titleLabelX, 22, 0x404040, false);
         graphics.drawString(font,
-                Component.translatable("gui.delightful_kitchen.chef_counter.members", menu.getMemberCount()),
+                Component.translatable("gui.delightful_kitchen.chef_counter.members", menu.getInventoryCount()),
                 titleLabelX, 34, 0x404040, false);
         graphics.drawString(font,
                 Component.translatable("gui.delightful_kitchen.chef_counter.recipes", menu.getRecipeCount()),

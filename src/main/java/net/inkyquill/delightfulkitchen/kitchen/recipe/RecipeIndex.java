@@ -18,7 +18,7 @@ public final class RecipeIndex {
     private final List<PlannedRecipe> edibleOutputs;
     private final Map<String, List<PlannedRecipe>> recipesByOutputKey;
 
-    private RecipeIndex(List<PlannedRecipe> recipes) {
+    RecipeIndex(List<PlannedRecipe> recipes) {
         this.recipes = Objects.requireNonNull(recipes, "recipes").stream()
                 .sorted(Comparator.comparing(recipe -> recipe.id().toString()))
                 .toList();

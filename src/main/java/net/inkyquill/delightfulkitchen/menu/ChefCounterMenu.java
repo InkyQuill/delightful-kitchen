@@ -27,7 +27,7 @@ import java.util.Set;
 public class ChefCounterMenu extends AbstractContainerMenu {
     private static final int DATA_SIZE = 7;
     private static final int DATA_FLOOR_COUNT = 0;
-    private static final int DATA_MEMBER_COUNT = 1;
+    private static final int DATA_INVENTORY_COUNT = 1;
     private static final int DATA_MULTIPLE_COUNTERS = 2;
     private static final int DATA_RECIPE_COUNT = 3;
     private static final int DATA_READY_COUNT = 4;
@@ -80,7 +80,7 @@ public class ChefCounterMenu extends AbstractContainerMenu {
     private static boolean populatePlanningData(SimpleContainerData data, Level level, BlockPos pos,
                                                 KitchenScanResult scan) {
         var endpoints = KitchenServices.inventoryEndpoints(level, scan, pos);
-        data.set(DATA_MEMBER_COUNT, endpoints.size());
+        data.set(DATA_INVENTORY_COUNT, endpoints.size());
 
         var inventory = new KitchenInventoryService(endpoints);
         var recipeIndex = RecipeIndex.build(level.getRecipeManager(), level.registryAccess());
@@ -108,8 +108,8 @@ public class ChefCounterMenu extends AbstractContainerMenu {
         return data.get(DATA_FLOOR_COUNT);
     }
 
-    public int getMemberCount() {
-        return data.get(DATA_MEMBER_COUNT);
+    public int getInventoryCount() {
+        return data.get(DATA_INVENTORY_COUNT);
     }
 
     public boolean hasMultipleCounters() {

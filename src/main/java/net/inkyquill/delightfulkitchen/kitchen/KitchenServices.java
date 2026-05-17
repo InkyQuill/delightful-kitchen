@@ -27,7 +27,7 @@ public final class KitchenServices {
             }
 
             BlockEntity blockEntity = level.getBlockEntity(member);
-            if (KitchenScanner.isKitchenStation(blockEntity)) {
+            if (!KitchenScanner.isInventoryProvider(level, member)) {
                 continue;
             }
             if (blockEntity instanceof Container container) {
