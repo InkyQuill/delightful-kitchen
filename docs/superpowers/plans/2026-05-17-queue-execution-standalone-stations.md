@@ -426,7 +426,7 @@ class KitchenStationServiceTest {
         @Override public int queueCapacity() { return capacity; }
         @Override public int queuedJobCount() { return queued; }
         @Override public KitchenStationStatus stationStatus() { return queued >= capacity ? KitchenStationStatus.QUEUE_FULL : KitchenStationStatus.IDLE; }
-        @Override public KitchenStationAcceptResult canAccept(KitchenStationJob job) { return accepts && hasQueueSpace() ? KitchenStationAcceptResult.accepted() : KitchenStationAcceptResult.blocked(net.inkyquill.delightfulkitchen.kitchen.recipe.PlanningBlocker.STATION_QUEUE_FULL); }
+        @Override public KitchenStationAcceptResult canAccept(KitchenStationJob job) { return accepts && hasQueueSpace() ? KitchenStationAcceptResult.acceptedResult() : KitchenStationAcceptResult.blocked(net.inkyquill.delightfulkitchen.kitchen.recipe.PlanningBlocker.STATION_QUEUE_FULL); }
         @Override public KitchenStationAcceptResult accept(KitchenStationJob job) { return canAccept(job); }
         @Override public BlockPos stationPos() { return BlockPos.ZERO; }
     }
@@ -961,7 +961,7 @@ public KitchenStationAcceptResult canAccept(KitchenStationJob job) {
     if (outputBlocked) {
         return KitchenStationAcceptResult.blocked(PlanningBlocker.OUTPUT_STORAGE_FULL);
     }
-    return KitchenStationAcceptResult.accepted();
+    return KitchenStationAcceptResult.acceptedResult();
 }
 
 @Override
@@ -975,7 +975,7 @@ public KitchenStationAcceptResult accept(KitchenStationJob job) {
     pendingResults.addAll(job.outputs());
     activeTimer = Math.max(1, job.processingTime());
     setChanged();
-    return KitchenStationAcceptResult.accepted();
+    return KitchenStationAcceptResult.acceptedResult();
 }
 
 @Override
