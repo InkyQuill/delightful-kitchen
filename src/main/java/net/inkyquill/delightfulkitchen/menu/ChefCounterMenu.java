@@ -5,7 +5,11 @@ import net.inkyquill.delightfulkitchen.kitchen.KitchenInventoryService;
 import net.inkyquill.delightfulkitchen.kitchen.KitchenScanResult;
 import net.inkyquill.delightfulkitchen.kitchen.KitchenScanner;
 import net.inkyquill.delightfulkitchen.kitchen.KitchenServices;
+import net.inkyquill.delightfulkitchen.kitchen.execution.KitchenPlanExecutionResult;
+import net.inkyquill.delightfulkitchen.kitchen.execution.KitchenPlanExecutor;
+import net.inkyquill.delightfulkitchen.kitchen.execution.KitchenPlanFingerprint;
 import net.inkyquill.delightfulkitchen.kitchen.recipe.PlanState;
+import net.inkyquill.delightfulkitchen.kitchen.recipe.PlanningBlocker;
 import net.inkyquill.delightfulkitchen.kitchen.recipe.RecipeIndex;
 import net.inkyquill.delightfulkitchen.kitchen.recipe.RecipePlan;
 import net.inkyquill.delightfulkitchen.kitchen.recipe.RecipePlanner;
@@ -102,6 +106,25 @@ public class ChefCounterMenu extends AbstractContainerMenu {
             }
         }
         return count;
+    }
+
+    public KitchenPlanExecutionResult confirmPlan(RecipePlan plan, KitchenPlanFingerprint fingerprint) {
+        return access.evaluate((level, pos) -> confirmPlan(level, pos, plan, fingerprint))
+                .orElseGet(() -> KitchenPlanExecutionResult.blocked(PlanningBlocker.KITCHEN_CHANGED));
+    }
+
+    private static KitchenPlanExecutionResult confirmPlan(Level level, BlockPos pos, RecipePlan plan,
+                                                         KitchenPlanFingerprint fingerprint) {
+        KitchenScanResult scan = KitchenScanner.scan(level, pos);
+        if (!scan.hasKitchenFloor()) {
+            return KitchenPlanExecutionResult.blocked(PlanningBlocker.KITCHEN_CHANGED);
+        }
+
+        var inventoryEndpoints = KitchenServices.inventoryEndpoints(level, scan, pos);
+        var inventory = new KitchenInventoryService(inventoryEndpoints);
+        var stations = KitchenServices.stationService(level, scan);
+        var executor = new KitchenPlanExecutor(inventory, stations, scan);
+        return executor.confirm(plan, fingerprint);
     }
 
     public int getFloorCount() {

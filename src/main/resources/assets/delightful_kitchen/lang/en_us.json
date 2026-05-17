@@ -21,6 +21,9 @@
   "gui.delightful_kitchen.chef_counter.intermediates": "Intermediate: %s",
   "gui.delightful_kitchen.chef_counter.blocked": "Blocked: %s",
   "gui.delightful_kitchen.chef_counter.multiple_counters": "Multiple Chef's Counters share this floor.",
+  "gui.delightful_kitchen.chef_counter.queue_full": "Station queue is full.",
+  "gui.delightful_kitchen.chef_counter.output_full": "Kitchen output storage is full.",
+  "gui.delightful_kitchen.chef_counter.kitchen_changed": "Kitchen changed. Reopen the counter and confirm again.",
 
   "block.delightful_kitchen.fuel_provider": "Fuel Provider",
   "container.delightful_kitchen.fuel_provider": "Fuel Provider",
