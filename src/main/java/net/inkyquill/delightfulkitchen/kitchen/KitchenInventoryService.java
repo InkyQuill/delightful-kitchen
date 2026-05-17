@@ -86,7 +86,7 @@ public class KitchenInventoryService {
     }
 
     public Optional<List<ItemStack>> extractIngredient(PlannedIngredient ingredient, boolean simulate) {
-        List<ItemStack> extracted = new ArrayList<>();
+        List<ExtractedSlot> extracted = new ArrayList<>();
         int remaining = ingredient.count();
         Ingredient matcher = ingredient.ingredient();
 
@@ -100,7 +100,7 @@ public class KitchenInventoryService {
                 int amount = Math.min(remaining, stack.getCount());
                 ItemStack taken = endpoint.extract(slot, amount, simulate);
                 if (!taken.isEmpty()) {
-                    extracted.add(taken);
+                    extracted.add(new ExtractedSlot(endpoint, slot, taken));
                     remaining -= taken.getCount();
                 }
             }
@@ -108,13 +108,11 @@ public class KitchenInventoryService {
 
         if (remaining > 0) {
             if (!simulate) {
-                for (ItemStack stack : extracted) {
-                    insert(stack, false);
-                }
+                rollbackExtracted(extracted);
             }
             return Optional.empty();
         }
-        return Optional.of(List.copyOf(extracted));
+        return Optional.of(extractedStacks(extracted));
     }
 
     public boolean canInsertAll(List<ItemStack> stacks) {
@@ -212,6 +210,30 @@ public class KitchenInventoryService {
             this.slot = slot;
             this.stack = stack;
         }
+    }
+
+    private void rollbackExtracted(List<ExtractedSlot> extracted) {
+        for (int index = extracted.size() - 1; index >= 0; index--) {
+            ExtractedSlot extractedSlot = extracted.get(index);
+            ItemStack remainder = extractedSlot.endpoint.restoreExtracted(extractedSlot.slot, extractedSlot.stack);
+            if (!remainder.isEmpty()) {
+                throw new IllegalStateException(
+                        "Failed to restore extracted stack to " + extractedSlot.endpoint.pos()
+                                + " slot " + extractedSlot.slot
+                );
+            }
+        }
+    }
+
+    private List<ItemStack> extractedStacks(List<ExtractedSlot> extracted) {
+        List<ItemStack> stacks = new ArrayList<>();
+        for (ExtractedSlot extractedSlot : extracted) {
+            stacks.add(extractedSlot.stack);
+        }
+        return List.copyOf(stacks);
+    }
+
+    private record ExtractedSlot(KitchenInventoryEndpoint endpoint, int slot, ItemStack stack) {
     }
 
     public NonNullList<ItemStack> visibleStacks(int limit) {

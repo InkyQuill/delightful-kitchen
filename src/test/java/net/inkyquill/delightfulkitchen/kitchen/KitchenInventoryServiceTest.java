@@ -61,6 +61,21 @@ class KitchenInventoryServiceTest {
     }
 
     @Test
+    void failedExtractionRestoresItemsToSourceSlot() {
+        RejectWheatPlacementContainer container =
+                new RejectWheatPlacementContainer(new ItemStack(Items.WHEAT, 1));
+        KitchenInventoryService service = new KitchenInventoryService(List.of(
+                new KitchenInventoryEndpoint(BlockPos.ZERO, container)
+        ));
+
+        Optional<List<ItemStack>> extracted = service.extractIngredient(
+                new PlannedIngredient(Ingredient.of(Items.WHEAT), 2), false);
+
+        assertTrue(extracted.isEmpty());
+        assertEquals(1, container.getItem(0).getCount());
+    }
+
+    @Test
     void canInsertAllSimulatesWithoutMutating() {
         SimpleContainer container = new SimpleContainer(1);
         KitchenInventoryService service = new KitchenInventoryService(List.of(
@@ -123,6 +138,17 @@ class KitchenInventoryServiceTest {
         @Override
         public int getMaxStackSize(ItemStack stack) {
             return 1;
+        }
+    }
+
+    private static final class RejectWheatPlacementContainer extends SimpleContainer {
+        RejectWheatPlacementContainer(ItemStack stack) {
+            super(stack);
+        }
+
+        @Override
+        public boolean canPlaceItem(int slot, ItemStack stack) {
+            return !stack.is(Items.WHEAT);
         }
     }
 }

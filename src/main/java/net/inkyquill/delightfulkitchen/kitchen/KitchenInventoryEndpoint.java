@@ -107,4 +107,41 @@ public final class KitchenInventoryEndpoint {
         remainder.shrink(transfer);
         return remainder.isEmpty() ? ItemStack.EMPTY : remainder;
     }
+
+    ItemStack restoreExtracted(int slot, ItemStack stack) {
+        if (itemHandler != null) {
+            return itemHandler.insertItem(slot, stack, false);
+        }
+
+        if (stack.isEmpty()) {
+            return ItemStack.EMPTY;
+        }
+
+        ItemStack existing = container.getItem(slot);
+        if (existing.isEmpty()) {
+            int transfer = Math.min(stack.getCount(), getSlotLimit(slot, stack));
+            if (transfer <= 0) {
+                return stack;
+            }
+            container.setItem(slot, stack.copyWithCount(transfer));
+            container.setChanged();
+            ItemStack remainder = stack.copy();
+            remainder.shrink(transfer);
+            return remainder.isEmpty() ? ItemStack.EMPTY : remainder;
+        }
+
+        if (!ItemStack.isSameItemSameComponents(existing, stack)) {
+            return stack;
+        }
+
+        int transfer = Math.min(stack.getCount(), getSlotLimit(slot, existing) - existing.getCount());
+        if (transfer <= 0) {
+            return stack;
+        }
+        existing.grow(transfer);
+        container.setChanged();
+        ItemStack remainder = stack.copy();
+        remainder.shrink(transfer);
+        return remainder.isEmpty() ? ItemStack.EMPTY : remainder;
+    }
 }
