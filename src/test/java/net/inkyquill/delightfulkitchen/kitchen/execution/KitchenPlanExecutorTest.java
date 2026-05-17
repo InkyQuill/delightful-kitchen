@@ -16,6 +16,7 @@ import net.inkyquill.delightfulkitchen.kitchen.station.KitchenStationEndpoint;
 import net.inkyquill.delightfulkitchen.kitchen.station.KitchenStationJob;
 import net.inkyquill.delightfulkitchen.kitchen.station.KitchenStationService;
 import net.inkyquill.delightfulkitchen.kitchen.station.KitchenStationStatus;
+import net.inkyquill.delightfulkitchen.kitchen.utility.BorrowedContainer;
 import net.inkyquill.delightfulkitchen.kitchen.utility.KitchenUtilityRequirement;
 import net.minecraft.SharedConstants;
 import net.minecraft.core.BlockPos;
@@ -38,6 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Predicate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -321,6 +323,105 @@ class KitchenPlanExecutorTest {
         assertEquals(0, inventory.count(new ItemStack(Items.BREAD)));
     }
 
+    @Test
+    void rollsBackIngredientsWhenUtilityBorrowFailsAfterFingerprintValidation() {
+        SimpleContainer source = new SimpleContainer(
+                new ItemStack(Items.WHEAT),
+                new ItemStack(Items.BUCKET),
+                ItemStack.EMPTY
+        );
+        BorrowFailsInventoryService inventory = new BorrowFailsInventoryService(
+                List.of(new KitchenInventoryEndpoint(BlockPos.ZERO, source))
+        );
+        FakeStation station = new FakeStation(KitchenStationType.GRILL, 1, 0);
+        KitchenScanResult scan = scan(true, false);
+        RecipePlan plan = plan(recipeWithUtility("dough", KitchenUtilityRequirement.WATER,
+                List.of(ingredient(Items.WHEAT, 1)), List.of(new ItemStack(Items.BREAD))));
+
+        KitchenPlanExecutionResult result = executor(inventory, station, scan)
+                .confirm(plan, KitchenPlanFingerprint.of(scan, inventory.snapshot()));
+
+        assertFalse(result.queued());
+        assertTrue(result.blockers().contains(PlanningBlocker.MISSING_WATER_CONTAINER));
+        assertEquals(1, inventory.count(new ItemStack(Items.WHEAT)));
+        assertEquals(1, inventory.count(new ItemStack(Items.BUCKET)));
+        assertEquals(0, inventory.count(new ItemStack(Items.BREAD)));
+    }
+
+    @Test
+    void returnsBorrowedContainerWhenOutputInsertionFailsAfterBorrowing() {
+        SimpleContainer source = new SimpleContainer(
+                new ItemStack(Items.WHEAT),
+                new ItemStack(Items.BUCKET),
+                ItemStack.EMPTY
+        );
+        InsertFailsInventoryService inventory = new InsertFailsInventoryService(
+                List.of(new KitchenInventoryEndpoint(BlockPos.ZERO, source))
+        );
+        FakeStation station = new FakeStation(KitchenStationType.GRILL, 1, 0);
+        KitchenScanResult scan = scan(true, false);
+        RecipePlan plan = plan(recipeWithUtility("dough", KitchenUtilityRequirement.WATER,
+                List.of(ingredient(Items.WHEAT, 1)), List.of(new ItemStack(Items.BREAD))));
+
+        KitchenPlanExecutionResult result = executor(inventory, station, scan)
+                .confirm(plan, KitchenPlanFingerprint.of(scan, inventory.snapshot()));
+
+        assertFalse(result.queued());
+        assertTrue(result.blockers().contains(PlanningBlocker.OUTPUT_STORAGE_FULL));
+        assertEquals(1, inventory.count(new ItemStack(Items.WHEAT)));
+        assertEquals(1, inventory.count(new ItemStack(Items.BUCKET)));
+        assertEquals(0, inventory.count(new ItemStack(Items.BREAD)));
+    }
+
+    @Test
+    void rollsBackInstantUtilityCraftingWhenBorrowedContainerCannotReleaseAfterOutputInsertion() {
+        FilteredSimpleContainer source = new FilteredSimpleContainer(
+                new ItemStack(Items.WHEAT),
+                new ItemStack(Items.BUCKET)
+        );
+        ValidationTrustingInventoryService inventory = new ValidationTrustingInventoryService(
+                List.of(new KitchenInventoryEndpoint(BlockPos.ZERO, source))
+        );
+        FakeStation station = new FakeStation(KitchenStationType.GRILL, 1, 0);
+        KitchenScanResult scan = scan(true, false);
+        RecipePlan plan = plan(recipeWithUtility("dough", KitchenUtilityRequirement.WATER,
+                List.of(ingredient(Items.WHEAT, 1)), List.of(new ItemStack(Items.BREAD))));
+
+        KitchenPlanExecutionResult result = executor(inventory, station, scan)
+                .confirm(plan, KitchenPlanFingerprint.of(scan, inventory.snapshot()));
+
+        assertFalse(result.queued());
+        assertTrue(result.blockers().contains(PlanningBlocker.OUTPUT_STORAGE_FULL));
+        assertEquals(1, inventory.count(new ItemStack(Items.WHEAT)));
+        assertEquals(1, inventory.count(new ItemStack(Items.BUCKET)));
+        assertEquals(0, inventory.count(new ItemStack(Items.BREAD)));
+    }
+
+    @Test
+    void blocksStationUtilityStepsWithoutExtractingOrQueuing() {
+        SimpleContainer source = new SimpleContainer(
+                new ItemStack(Items.WHEAT),
+                new ItemStack(Items.BUCKET),
+                ItemStack.EMPTY
+        );
+        FakeStation station = new FakeStation(KitchenStationType.GRILL, 1, 0);
+        KitchenInventoryService inventory = inventory(source);
+        KitchenScanResult scan = scan(true, false);
+        RecipePlan plan = plan(new PlannedRecipe(id("grilled_dough"),
+                List.of(ingredient(Items.WHEAT, 1)), List.of(new ItemStack(Items.BREAD)),
+                KitchenStationType.GRILL, Optional.empty(), Optional.empty(),
+                KitchenUtilityRequirement.WATER, 20, true));
+
+        KitchenPlanExecutionResult result = executor(inventory, station, scan)
+                .confirm(plan, KitchenPlanFingerprint.of(scan, inventory.snapshot()));
+
+        assertFalse(result.queued());
+        assertTrue(result.blockers().contains(PlanningBlocker.MISSING_RAW_INGREDIENT));
+        assertEquals(1, inventory.count(new ItemStack(Items.WHEAT)));
+        assertEquals(1, inventory.count(new ItemStack(Items.BUCKET)));
+        assertEquals(0, station.acceptedJobCount());
+    }
+
     private static KitchenPlanExecutor executor(KitchenInventoryService inventory, FakeStation station,
                                                 KitchenScanResult scan) {
         KitchenStationService stations = new KitchenStationService(List.of(
@@ -451,6 +552,69 @@ class KitchenPlanExecutorTest {
 
         private List<KitchenStationJob> acceptedJobs() {
             return List.copyOf(acceptedJobs);
+        }
+    }
+
+    private static final class BorrowFailsInventoryService extends KitchenInventoryService {
+        private BorrowFailsInventoryService(List<KitchenInventoryEndpoint> endpoints) {
+            super(endpoints);
+        }
+
+        @Override
+        public boolean hasReservable(Predicate<ItemStack> matcher) {
+            return true;
+        }
+
+        @Override
+        public Optional<BorrowedContainer> borrowOne(Predicate<ItemStack> matcher) {
+            return Optional.empty();
+        }
+    }
+
+    private static final class InsertFailsInventoryService extends KitchenInventoryService {
+        private boolean failedOutputInsertion;
+
+        private InsertFailsInventoryService(List<KitchenInventoryEndpoint> endpoints) {
+            super(endpoints);
+        }
+
+        @Override
+        public boolean canInsertAll(List<ItemStack> stacks) {
+            return true;
+        }
+
+        @Override
+        public boolean insertAll(List<ItemStack> stacks) {
+            if (!failedOutputInsertion && stacks.stream().anyMatch(stack -> stack.is(Items.BREAD))) {
+                failedOutputInsertion = true;
+                return false;
+            }
+            return super.insertAll(stacks);
+        }
+    }
+
+    private static final class ValidationTrustingInventoryService extends KitchenInventoryService {
+        private ValidationTrustingInventoryService(List<KitchenInventoryEndpoint> endpoints) {
+            super(endpoints);
+        }
+
+        @Override
+        public boolean canInsertAll(List<ItemStack> stacks) {
+            return true;
+        }
+    }
+
+    private static final class FilteredSimpleContainer extends SimpleContainer {
+        private FilteredSimpleContainer(ItemStack... items) {
+            super(items);
+        }
+
+        @Override
+        public boolean canPlaceItem(int slot, ItemStack stack) {
+            if (slot == 0) {
+                return stack.is(Items.WHEAT);
+            }
+            return stack.is(Items.BUCKET) || stack.is(Items.BREAD);
         }
     }
 }

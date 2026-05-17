@@ -66,18 +66,21 @@ public final class KitchenPlanExecutor {
             KitchenStationJob job = extracted.job().orElseThrow();
             if (job.stationType() == KitchenStationType.CRAFTING) {
                 if (!inventory.insertAll(job.outputs())) {
-                    releaseBorrowedContainer(extracted.borrowedContainer());
+                    assertReleasedBorrowedContainer(extracted.borrowedContainer());
                     rollbackExtractedJob(job, false);
                     rollback(extractedJobs);
                     return KitchenPlanExecutionResult.blocked(PlanningBlocker.OUTPUT_STORAGE_FULL);
                 }
-                releaseBorrowedContainer(extracted.borrowedContainer());
+                if (!releaseBorrowedContainer(extracted.borrowedContainer())) {
+                    rollbackInstantCraftingAfterReleaseFailure(extractedJobs, job, extracted.borrowedContainer());
+                    return KitchenPlanExecutionResult.blocked(PlanningBlocker.OUTPUT_STORAGE_FULL);
+                }
                 extractedJobs.add(new ExtractedJob(job, true));
                 continue;
             }
 
             if (extracted.borrowedContainer().isPresent()) {
-                releaseBorrowedContainer(extracted.borrowedContainer());
+                assertReleasedBorrowedContainer(extracted.borrowedContainer());
                 rollbackExtractedJob(job, false);
                 rollback(extractedJobs);
                 return KitchenPlanExecutionResult.blocked(PlanningBlocker.MISSING_RAW_INGREDIENT);
@@ -389,9 +392,25 @@ public final class KitchenPlanExecutor {
         return stack.isEmpty() ? Optional.empty() : Optional.of(stack);
     }
 
-    private void releaseBorrowedContainer(Optional<BorrowedContainer> borrowedContainer) {
+    private void rollbackInstantCraftingAfterReleaseFailure(List<ExtractedJob> extractedJobs, KitchenStationJob job,
+                                                           Optional<BorrowedContainer> borrowedContainer) {
+        List<ExtractedJob> rollbackJobs = new ArrayList<>(extractedJobs);
+        rollbackJobs.add(new ExtractedJob(job, true));
+        assertNoAmbiguousInstantOutputRollback(rollbackJobs);
+
+        removeInstantOutputs(job.outputs());
+        assertReleasedBorrowedContainer(borrowedContainer);
+        rollbackExtractedParts(job.inputs(), job.servingContainer(), job.fuel());
+        rollback(extractedJobs);
+    }
+
+    private boolean releaseBorrowedContainer(Optional<BorrowedContainer> borrowedContainer) {
         Optional<ItemStack> remainder = borrowedContainer.flatMap(utilityService::release);
-        if (remainder.isPresent()) {
+        return remainder.isEmpty();
+    }
+
+    private void assertReleasedBorrowedContainer(Optional<BorrowedContainer> borrowedContainer) {
+        if (!releaseBorrowedContainer(borrowedContainer)) {
             throw new IllegalStateException("Failed to release borrowed utility container");
         }
     }
