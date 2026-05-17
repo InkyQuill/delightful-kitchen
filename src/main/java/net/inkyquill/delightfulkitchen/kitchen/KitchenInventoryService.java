@@ -2,6 +2,7 @@ package net.inkyquill.delightfulkitchen.kitchen;
 
 import net.inkyquill.delightfulkitchen.kitchen.recipe.KitchenInventorySnapshot;
 import net.inkyquill.delightfulkitchen.kitchen.recipe.PlannedIngredient;
+import net.inkyquill.delightfulkitchen.kitchen.utility.BorrowedContainer;
 import net.minecraft.core.NonNullList;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
@@ -9,7 +10,9 @@ import net.minecraft.world.item.crafting.Ingredient;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Predicate;
 
 public class KitchenInventoryService {
     private final List<KitchenInventoryEndpoint> endpoints;
@@ -70,6 +73,34 @@ public class KitchenInventoryService {
             remainder = insertIntoEmptySlots(remainder, simulate);
         }
         return remainder.isEmpty() ? ItemStack.EMPTY : remainder;
+    }
+
+    public Optional<BorrowedContainer> borrowOne(Predicate<ItemStack> matcher) {
+        Objects.requireNonNull(matcher, "matcher");
+        for (KitchenInventoryEndpoint endpoint : endpoints) {
+            for (int slot = 0; slot < endpoint.size(); slot++) {
+                ItemStack stack = endpoint.get(slot);
+                if (stack.isEmpty() || !matcher.test(stack)) {
+                    continue;
+                }
+
+                ItemStack extracted = endpoint.extract(slot, 1, false);
+                if (extracted.isEmpty()) {
+                    continue;
+                }
+                if (extracted.getCount() != 1 || !matcher.test(extracted)) {
+                    ItemStack remainder = endpoint.insert(slot, extracted, false);
+                    if (!remainder.isEmpty()) {
+                        throw new IllegalStateException("Failed to restore borrowed container to "
+                                + endpoint.pos() + " slot " + slot);
+                    }
+                    throw new IllegalStateException("Extracted stack did not match borrow request from "
+                            + endpoint.pos() + " slot " + slot);
+                }
+                return Optional.of(new BorrowedContainer(extracted, endpoint, slot));
+            }
+        }
+        return Optional.empty();
     }
 
     public KitchenInventorySnapshot snapshot() {

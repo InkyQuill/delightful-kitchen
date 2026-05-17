@@ -7,6 +7,7 @@ import net.inkyquill.delightfulkitchen.kitchen.recipe.KitchenStationType;
 import net.inkyquill.delightfulkitchen.kitchen.station.KitchenStation;
 import net.inkyquill.delightfulkitchen.kitchen.station.KitchenStationEndpoint;
 import net.inkyquill.delightfulkitchen.kitchen.station.KitchenStationService;
+import net.inkyquill.delightfulkitchen.kitchen.utility.KitchenUtilityService;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.Container;
 import net.minecraft.world.level.Level;
@@ -55,6 +56,10 @@ public final class KitchenServices {
             }
         }
         return new KitchenStationService(endpoints);
+    }
+
+    public static KitchenUtilityService utilityService(Level level, KitchenScanResult scan, BlockPos terminalPos) {
+        return new KitchenUtilityService(scan, new KitchenInventoryService(inventoryEndpoints(level, scan, terminalPos)));
     }
 
     public static EnumSet<KitchenStationType> stationTypes(Level level, KitchenScanResult scan) {

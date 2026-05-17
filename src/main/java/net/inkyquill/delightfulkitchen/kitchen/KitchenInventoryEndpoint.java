@@ -112,6 +112,10 @@ public final class KitchenInventoryEndpoint {
         return remainder.isEmpty() ? ItemStack.EMPTY : remainder;
     }
 
+    public ItemStack releaseToSlot(int slot, ItemStack stack) {
+        return insert(slot, stack, false);
+    }
+
     ItemStack restoreExtracted(int slot, ItemStack stack) {
         if (itemHandler != null) {
             return itemHandler.insertItem(slot, stack, false);
