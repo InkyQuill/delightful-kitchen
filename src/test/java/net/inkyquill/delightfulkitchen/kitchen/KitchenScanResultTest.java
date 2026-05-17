@@ -39,11 +39,27 @@ class KitchenScanResultTest {
     }
 
     @Test
-    void scannerCanAnchorFromUtilityBlockAdjacentToKitchenFloor() {
+    void scannerRejectsUtilityBlockAdjacentToKitchenFloor() {
         BlockPos freezer = new BlockPos(0, 65, 0);
         BlockPos floor = freezer.east().below();
         KitchenScanner.ScanView view = new TestScanView(
                 Set.of(floor),
+                Set.of(),
+                Set.of(freezer),
+                Set.of()
+        );
+
+        KitchenScanResult result = KitchenScanner.scanFromKitchenBlock(view, freezer);
+
+        assertFalse(result.hasKitchenFloor());
+        assertFalse(result.hasFreezer());
+    }
+
+    @Test
+    void scannerAnchorsUtilityBlockOverKitchenFloor() {
+        BlockPos freezer = new BlockPos(0, 65, 0);
+        KitchenScanner.ScanView view = new TestScanView(
+                Set.of(freezer.below()),
                 Set.of(),
                 Set.of(freezer),
                 Set.of()

@@ -97,16 +97,7 @@ public final class KitchenScanner {
     @Nullable
     private static BlockPos findUtilityFloor(ScanView view, BlockPos blockPos) {
         BlockPos directFloor = blockPos.below();
-        if (view.isKitchenFloor(directFloor)) {
-            return directFloor;
-        }
-        for (Direction direction : Direction.Plane.HORIZONTAL) {
-            BlockPos nearbyFloor = blockPos.relative(direction).below();
-            if (view.isKitchenFloor(nearbyFloor)) {
-                return nearbyFloor;
-            }
-        }
-        return null;
+        return view.isKitchenFloor(directFloor) ? directFloor : null;
     }
 
     private static boolean isCompatibleMember(ScanView view, BlockPos pos) {
