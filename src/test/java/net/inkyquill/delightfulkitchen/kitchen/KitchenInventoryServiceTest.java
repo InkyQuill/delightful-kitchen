@@ -9,6 +9,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.neoforged.fml.loading.LoadingModList;
+import net.neoforged.neoforge.items.IItemHandler;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -76,6 +77,20 @@ class KitchenInventoryServiceTest {
     }
 
     @Test
+    void failedExtractionFromRejectingItemHandlerDoesNotMutate() {
+        RejectingInsertItemHandler itemHandler = new RejectingInsertItemHandler(new ItemStack(Items.WHEAT, 1));
+        KitchenInventoryService service = new KitchenInventoryService(List.of(
+                new KitchenInventoryEndpoint(BlockPos.ZERO, itemHandler)
+        ));
+
+        Optional<List<ItemStack>> extracted = service.extractIngredient(
+                new PlannedIngredient(Ingredient.of(Items.WHEAT), 2), false);
+
+        assertTrue(extracted.isEmpty());
+        assertEquals(1, itemHandler.getStackInSlot(0).getCount());
+    }
+
+    @Test
     void canInsertAllSimulatesWithoutMutating() {
         SimpleContainer container = new SimpleContainer(1);
         KitchenInventoryService service = new KitchenInventoryService(List.of(
@@ -119,6 +134,28 @@ class KitchenInventoryServiceTest {
         assertTrue(container.getItem(0).isEmpty());
     }
 
+    @Test
+    void canInsertAllUsesItemHandlerSimulatedInsertion() {
+        RejectAppleItemHandler itemHandler = new RejectAppleItemHandler();
+        KitchenInventoryService service = new KitchenInventoryService(List.of(
+                new KitchenInventoryEndpoint(BlockPos.ZERO, itemHandler)
+        ));
+
+        assertFalse(service.canInsertAll(List.of(new ItemStack(Items.APPLE))));
+        assertTrue(itemHandler.getStackInSlot(0).isEmpty());
+    }
+
+    @Test
+    void insertAllDoesNotPartiallyInsertWhenBatchCannotFit() {
+        SimpleContainer container = new SimpleContainer(1);
+        KitchenInventoryService service = new KitchenInventoryService(List.of(
+                new KitchenInventoryEndpoint(BlockPos.ZERO, container)
+        ));
+
+        assertFalse(service.insertAll(List.of(new ItemStack(Items.BREAD), new ItemStack(Items.APPLE))));
+        assertTrue(container.getItem(0).isEmpty());
+    }
+
     private static final class RejectAppleContainer extends SimpleContainer {
         RejectAppleContainer(int size) {
             super(size);
@@ -149,6 +186,95 @@ class KitchenInventoryServiceTest {
         @Override
         public boolean canPlaceItem(int slot, ItemStack stack) {
             return !stack.is(Items.WHEAT);
+        }
+    }
+
+    private static final class RejectingInsertItemHandler implements IItemHandler {
+        private ItemStack stack;
+
+        private RejectingInsertItemHandler(ItemStack stack) {
+            this.stack = stack.copy();
+        }
+
+        @Override
+        public int getSlots() {
+            return 1;
+        }
+
+        @Override
+        public ItemStack getStackInSlot(int slot) {
+            return stack;
+        }
+
+        @Override
+        public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
+            return stack;
+        }
+
+        @Override
+        public ItemStack extractItem(int slot, int amount, boolean simulate) {
+            if (stack.isEmpty() || amount <= 0) {
+                return ItemStack.EMPTY;
+            }
+            int extracted = Math.min(amount, stack.getCount());
+            ItemStack result = stack.copyWithCount(extracted);
+            if (!simulate) {
+                stack.shrink(extracted);
+                if (stack.isEmpty()) {
+                    stack = ItemStack.EMPTY;
+                }
+            }
+            return result;
+        }
+
+        @Override
+        public int getSlotLimit(int slot) {
+            return 64;
+        }
+
+        @Override
+        public boolean isItemValid(int slot, ItemStack stack) {
+            return true;
+        }
+    }
+
+    private static final class RejectAppleItemHandler implements IItemHandler {
+        private ItemStack stack = ItemStack.EMPTY;
+
+        @Override
+        public int getSlots() {
+            return 1;
+        }
+
+        @Override
+        public ItemStack getStackInSlot(int slot) {
+            return stack;
+        }
+
+        @Override
+        public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
+            if (stack.is(Items.APPLE)) {
+                return stack;
+            }
+            if (!simulate) {
+                this.stack = stack.copy();
+            }
+            return ItemStack.EMPTY;
+        }
+
+        @Override
+        public ItemStack extractItem(int slot, int amount, boolean simulate) {
+            return ItemStack.EMPTY;
+        }
+
+        @Override
+        public int getSlotLimit(int slot) {
+            return 64;
+        }
+
+        @Override
+        public boolean isItemValid(int slot, ItemStack stack) {
+            return true;
         }
     }
 }

@@ -86,6 +86,33 @@ public class KitchenInventoryService {
     }
 
     public Optional<List<ItemStack>> extractIngredient(PlannedIngredient ingredient, boolean simulate) {
+        if (simulate) {
+            return planExtraction(ingredient).map(this::extractedStacks);
+        }
+
+        Optional<List<ExtractedSlot>> planned = planExtraction(ingredient);
+        if (planned.isEmpty()) {
+            return Optional.empty();
+        }
+
+        List<ExtractedSlot> extracted = new ArrayList<>();
+        for (ExtractedSlot plannedSlot : planned.orElseThrow()) {
+            ItemStack taken = plannedSlot.endpoint.extract(plannedSlot.slot, plannedSlot.stack.getCount(), false);
+            if (taken.getCount() != plannedSlot.stack.getCount()
+                    || !ItemStack.isSameItemSameComponents(taken, plannedSlot.stack)) {
+                rollbackExtracted(extracted);
+                throw new IllegalStateException(
+                        "Failed to extract planned stack from " + plannedSlot.endpoint.pos()
+                                + " slot " + plannedSlot.slot
+                );
+            }
+            extracted.add(new ExtractedSlot(plannedSlot.endpoint, plannedSlot.slot, taken));
+        }
+
+        return Optional.of(extractedStacks(extracted));
+    }
+
+    private Optional<List<ExtractedSlot>> planExtraction(PlannedIngredient ingredient) {
         List<ExtractedSlot> extracted = new ArrayList<>();
         int remaining = ingredient.count();
         Ingredient matcher = ingredient.ingredient();
@@ -98,7 +125,7 @@ public class KitchenInventoryService {
                 }
 
                 int amount = Math.min(remaining, stack.getCount());
-                ItemStack taken = endpoint.extract(slot, amount, simulate);
+                ItemStack taken = endpoint.extract(slot, amount, true);
                 if (!taken.isEmpty()) {
                     extracted.add(new ExtractedSlot(endpoint, slot, taken));
                     remaining -= taken.getCount();
@@ -107,12 +134,9 @@ public class KitchenInventoryService {
         }
 
         if (remaining > 0) {
-            if (!simulate) {
-                rollbackExtracted(extracted);
-            }
             return Optional.empty();
         }
-        return Optional.of(extractedStacks(extracted));
+        return Optional.of(extracted);
     }
 
     public boolean canInsertAll(List<ItemStack> stacks) {
@@ -126,9 +150,13 @@ public class KitchenInventoryService {
     }
 
     public boolean insertAll(List<ItemStack> stacks) {
+        if (!canInsertAll(stacks)) {
+            return false;
+        }
+
         for (ItemStack stack : stacks) {
             if (!insert(stack, false).isEmpty()) {
-                return false;
+                throw new IllegalStateException("Failed to insert stack after successful insertion simulation");
             }
         }
         return true;
@@ -168,10 +196,7 @@ public class KitchenInventoryService {
                 continue;
             }
 
-            int transfer = Math.min(
-                    remainder.getCount(),
-                    slot.endpoint.getSlotLimit(slot.slot, slot.stack) - slot.stack.getCount()
-            );
+            int transfer = simulatedTransfer(slot, remainder, slot.stack);
             if (transfer <= 0) {
                 continue;
             }
@@ -190,7 +215,7 @@ public class KitchenInventoryService {
                 continue;
             }
 
-            int transfer = Math.min(remainder.getCount(), slot.endpoint.getSlotLimit(slot.slot, remainder));
+            int transfer = simulatedTransfer(slot, remainder, remainder);
             if (transfer <= 0) {
                 continue;
             }
@@ -198,6 +223,13 @@ public class KitchenInventoryService {
             remainder.shrink(transfer);
         }
         return remainder;
+    }
+
+    private int simulatedTransfer(SimulatedSlot slot, ItemStack remainder, ItemStack limitPrototype) {
+        ItemStack simulatedRemainder = slot.endpoint.insert(slot.slot, remainder, true);
+        int endpointAccepted = remainder.getCount() - simulatedRemainder.getCount();
+        int simulatedCapacity = slot.endpoint.getSlotLimit(slot.slot, limitPrototype) - slot.stack.getCount();
+        return Math.min(endpointAccepted, simulatedCapacity);
     }
 
     private static final class SimulatedSlot {
