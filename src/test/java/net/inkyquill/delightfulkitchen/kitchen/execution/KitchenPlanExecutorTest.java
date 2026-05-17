@@ -398,6 +398,30 @@ class KitchenPlanExecutorTest {
     }
 
     @Test
+    void preservesBorrowedContainerWhenReleaseRemainsBlockedUntilInputsAreRestored() {
+        InputDependentContainer source = new InputDependentContainer(
+                new ItemStack(Items.WHEAT),
+                new ItemStack(Items.BUCKET)
+        );
+        ValidationTrustingInventoryService inventory = new ValidationTrustingInventoryService(
+                List.of(new KitchenInventoryEndpoint(BlockPos.ZERO, source))
+        );
+        FakeStation station = new FakeStation(KitchenStationType.GRILL, 1, 0);
+        KitchenScanResult scan = scan(true, false);
+        RecipePlan plan = plan(recipeWithUtility("dough", KitchenUtilityRequirement.WATER,
+                List.of(ingredient(Items.WHEAT, 1)), List.of(new ItemStack(Items.BREAD))));
+
+        KitchenPlanExecutionResult result = executor(inventory, station, scan)
+                .confirm(plan, KitchenPlanFingerprint.of(scan, inventory.snapshot()));
+
+        assertFalse(result.queued());
+        assertTrue(result.blockers().contains(PlanningBlocker.OUTPUT_STORAGE_FULL));
+        assertEquals(1, inventory.count(new ItemStack(Items.WHEAT)));
+        assertEquals(1, inventory.count(new ItemStack(Items.BUCKET)));
+        assertEquals(0, inventory.count(new ItemStack(Items.BREAD)));
+    }
+
+    @Test
     void blocksStationUtilityStepsWithoutExtractingOrQueuing() {
         SimpleContainer source = new SimpleContainer(
                 new ItemStack(Items.WHEAT),
@@ -615,6 +639,23 @@ class KitchenPlanExecutorTest {
                 return stack.is(Items.WHEAT);
             }
             return stack.is(Items.BUCKET) || stack.is(Items.BREAD);
+        }
+    }
+
+    private static final class InputDependentContainer extends SimpleContainer {
+        private InputDependentContainer(ItemStack... items) {
+            super(items);
+        }
+
+        @Override
+        public boolean canPlaceItem(int slot, ItemStack stack) {
+            if (slot == 0) {
+                return stack.is(Items.WHEAT);
+            }
+            if (stack.is(Items.BREAD)) {
+                return true;
+            }
+            return stack.is(Items.BUCKET) && getItem(0).is(Items.WHEAT);
         }
     }
 }

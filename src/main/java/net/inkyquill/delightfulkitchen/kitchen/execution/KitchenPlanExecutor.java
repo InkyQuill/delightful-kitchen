@@ -399,8 +399,9 @@ public final class KitchenPlanExecutor {
         assertNoAmbiguousInstantOutputRollback(rollbackJobs);
 
         removeInstantOutputs(job.outputs());
-        assertReleasedBorrowedContainer(borrowedContainer);
-        rollbackExtractedParts(job.inputs(), job.servingContainer(), job.fuel());
+        List<ItemStack> inputsAndBorrowedContainer = new ArrayList<>(job.inputs());
+        borrowedContainer.map(BorrowedContainer::stack).ifPresent(inputsAndBorrowedContainer::add);
+        rollbackExtractedParts(inputsAndBorrowedContainer, job.servingContainer(), job.fuel());
         rollback(extractedJobs);
     }
 
