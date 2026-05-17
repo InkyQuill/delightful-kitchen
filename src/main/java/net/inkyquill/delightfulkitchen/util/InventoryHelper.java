@@ -1,12 +1,14 @@
 package net.inkyquill.delightfulkitchen.util;
 
-import net.blay09.mods.cookingforblockheads.api.KitchenItemProcessor;
 import net.blay09.mods.cookingforblockheads.api.KitchenItemProvider;
 import net.inkyquill.delightfulkitchen.block.entity.CabinetOfHoldingBlockEntity;
 import net.inkyquill.delightfulkitchen.block.entity.AutoCutterBlockEntity;
 import net.inkyquill.delightfulkitchen.block.entity.FuelProviderBlockEntity;
 import net.inkyquill.delightfulkitchen.block.entity.GrillBlockEntity;
 import net.inkyquill.delightfulkitchen.block.entity.PotStandBlockEntity;
+import net.inkyquill.delightfulkitchen.kitchen.KitchenInventoryService;
+import net.inkyquill.delightfulkitchen.kitchen.KitchenScanner;
+import net.inkyquill.delightfulkitchen.kitchen.KitchenServices;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
@@ -35,13 +37,7 @@ public final class InventoryHelper {
                     ResourceLocation.fromNamespaceAndPath("cookingforblockheads", "kitchen_item_provider"),
                     KitchenItemProvider.class);
 
-    /** Same as FarmersDelightCompat.KITCHEN_ITEM_PROCESSOR — referenced here to avoid circular dep. */
-    static final BlockCapability<KitchenItemProcessor, Void> KITCHEN_ITEM_PROCESSOR =
-            BlockCapability.createVoid(
-                    ResourceLocation.fromNamespaceAndPath("cookingforblockheads", "kitchen_item_processor"),
-                    KitchenItemProcessor.class);
-
-    /** CfB tag that allows non-provider/non-processor blocks to propagate kitchen connectivity. */
+    /** CfB tag that allows non-provider blocks to propagate kitchen connectivity. */
     private static final TagKey<net.minecraft.world.level.block.Block> KITCHEN_CONNECTORS =
             TagKey.create(Registries.BLOCK,
                     ResourceLocation.fromNamespaceAndPath("cookingforblockheads", "kitchen_connectors"));
@@ -49,7 +45,7 @@ public final class InventoryHelper {
     // ── Kitchen-network-wide BFS ──────────────────────────────────────────────
 
     /**
-     * Pushes {@code stack} into the CfB kitchen network connected to {@code from},
+     * Pushes {@code stack} into the kitchen connected to {@code from},
      * preferring {@link CabinetOfHoldingBlockEntity} over other containers.
      * Mutates stack.count. Skips machine block entities (Grill, PotStand, etc.)
      * that should not receive output.
@@ -57,6 +53,11 @@ public final class InventoryHelper {
      * @return true if stack was fully inserted
      */
     public static boolean pushToKitchen(Level level, BlockPos from, ItemStack stack) {
+        if (stack.isEmpty()) return true;
+
+        pushToKitchenFloor(level, from, stack);
+        if (stack.isEmpty()) return true;
+
         Set<BlockPos> network = new HashSet<>();
         network.add(from);
         collectKitchenNetwork(level, from, network, true);
@@ -85,6 +86,24 @@ public final class InventoryHelper {
         return stack.isEmpty();
     }
 
+    private static void pushToKitchenFloor(Level level, BlockPos from, ItemStack stack) {
+        var scan = KitchenScanner.scan(level, from);
+        if (!scan.hasKitchenFloor()) {
+            return;
+        }
+
+        var endpoints = KitchenServices.inventoryEndpoints(level, scan, from).stream()
+                .filter(endpoint -> isOutputTarget(level.getBlockEntity(endpoint.pos())))
+                .toList();
+        if (endpoints.isEmpty()) {
+            return;
+        }
+
+        var inventory = new KitchenInventoryService(endpoints);
+        ItemStack remainder = inventory.insert(stack, false);
+        stack.setCount(remainder.getCount());
+    }
+
     /**
      * Finds all fuel-consuming block entities (Grill, PotStand) reachable through
      * the kitchen network and pushes one fuel item from {@code fuelStack} to each
@@ -93,11 +112,26 @@ public final class InventoryHelper {
     public static void pushFuelToKitchen(Level level, BlockPos from, ItemStack fuelStack) {
         if (fuelStack.isEmpty()) return;
 
+        pushFuelToKitchenFloor(level, from, fuelStack);
+        if (fuelStack.isEmpty()) return;
+
         Set<BlockPos> network = new HashSet<>();
         network.add(from);
         collectKitchenNetwork(level, from, network, true);
 
-        for (BlockPos pos : network) {
+        pushFuelToStations(level, from, network, fuelStack);
+    }
+
+    private static void pushFuelToKitchenFloor(Level level, BlockPos from, ItemStack fuelStack) {
+        var scan = KitchenScanner.scan(level, from);
+        if (!scan.hasKitchenFloor()) {
+            return;
+        }
+        pushFuelToStations(level, from, scan.memberBlocks(), fuelStack);
+    }
+
+    private static void pushFuelToStations(Level level, BlockPos from, Iterable<BlockPos> positions, ItemStack fuelStack) {
+        for (BlockPos pos : positions) {
             if (pos.equals(from)) continue;
             if (fuelStack.isEmpty()) break;
 
@@ -115,12 +149,10 @@ public final class InventoryHelper {
     }
 
     /**
-     * BFS through the CfB kitchen network using the same traversal rules as
-     * {@code KitchenImpl.findNeighbourCraftingBlocks}: any block with a
-     * KitchenItemProvider or KitchenItemProcessor capability continues the BFS;
-     * blocks tagged {@code cookingforblockheads:kitchen_connectors} also continue
-     * the BFS (but without extended up-search). Extended up-search checks two
-     * blocks upward.
+     * BFS through the remaining CfB provider network. Any block with a
+     * KitchenItemProvider capability continues the BFS; blocks tagged
+     * {@code cookingforblockheads:kitchen_connectors} also continue the BFS
+     * without extended up-search. Extended up-search checks two blocks upward.
      */
     private static void collectKitchenNetwork(Level level, BlockPos pos,
                                                Set<BlockPos> visited, boolean extendedUp) {
@@ -134,11 +166,10 @@ public final class InventoryHelper {
                 BlockState state = level.getBlockState(neighbor);
                 BlockEntity be = level.getBlockEntity(neighbor);
 
-                boolean hasProvider  = be != null && level.getCapability(KITCHEN_ITEM_PROVIDER, neighbor, state, be, null) != null;
-                boolean hasProcessor = be != null && level.getCapability(KITCHEN_ITEM_PROCESSOR, neighbor, state, be, null) != null;
-                boolean isConnector  = state.is(KITCHEN_CONNECTORS);
+                boolean hasProvider = be != null && level.getCapability(KITCHEN_ITEM_PROVIDER, neighbor, state, be, null) != null;
+                boolean isConnector = state.is(KITCHEN_CONNECTORS);
 
-                if (hasProvider || hasProcessor) {
+                if (hasProvider) {
                     collectKitchenNetwork(level, neighbor, visited, true);
                 } else if (isConnector) {
                     collectKitchenNetwork(level, neighbor, visited, false);

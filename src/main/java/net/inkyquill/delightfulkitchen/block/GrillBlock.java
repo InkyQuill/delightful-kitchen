@@ -29,8 +29,7 @@ import org.jetbrains.annotations.Nullable;
  * <p>
  * Has 6 grill slots and emits light when lit. Can be ignited with flint and steel
  * or a fire charge, and extinguished by right-clicking with a shovel.
- * The grill functions as a {@code KitchenItemProcessor} so CfB's recipe book
- * will route campfire recipes to it automatically.
+ * Queue execution is handled by the standalone kitchen station service.
  */
 public class GrillBlock extends BaseEntityBlock {
 
