@@ -1,0 +1,15 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_packed_ice": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [{"items": "minecraft:packed_ice"}]
+      }
+    }
+  },
+  "requirements": [["has_packed_ice"]],
+  "rewards": {
+    "recipes": ["delightful_kitchen:freezer"]
+  }
+}

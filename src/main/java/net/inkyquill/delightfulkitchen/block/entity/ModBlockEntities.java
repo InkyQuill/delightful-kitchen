@@ -39,4 +39,8 @@ public class ModBlockEntities {
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<FuelProviderBlockEntity>> FUEL_PROVIDER =
             BLOCK_ENTITIES.register("fuel_provider", () ->
                     BlockEntityType.Builder.of(FuelProviderBlockEntity::new, ModBlocks.FUEL_PROVIDER.get()).build(null));
+
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<FreezerBlockEntity>> FREEZER =
+            BLOCK_ENTITIES.register("freezer", () ->
+                    BlockEntityType.Builder.of(FreezerBlockEntity::new, ModBlocks.FREEZER.get()).build(null));
 }

@@ -26,6 +26,8 @@ public class ModItems {
     public static final DeferredItem<BlockItem> CABINET_OF_HOLDING = ITEMS.registerSimpleBlockItem(ModBlocks.CABINET_OF_HOLDING);
     public static final DeferredItem<BlockItem> CHEF_COUNTER      = ITEMS.registerSimpleBlockItem(ModBlocks.CHEF_COUNTER);
     public static final DeferredItem<BlockItem> FUEL_PROVIDER     = ITEMS.registerSimpleBlockItem(ModBlocks.FUEL_PROVIDER);
+    public static final DeferredItem<BlockItem> WATER_PROVIDER    = ITEMS.registerSimpleBlockItem(ModBlocks.WATER_PROVIDER);
+    public static final DeferredItem<BlockItem> FREEZER           = ITEMS.registerSimpleBlockItem(ModBlocks.FREEZER);
     public static final DeferredItem<BlockItem> KITCHEN_FLOOR     = ITEMS.registerSimpleBlockItem(ModBlocks.KITCHEN_FLOOR);
 
     public static final DeferredItem<MopItem> MOP = ITEMS.register("mop",
@@ -43,6 +45,8 @@ public class ModItems {
                         output.accept(CABINET_OF_HOLDING.get());
                         output.accept(CHEF_COUNTER.get());
                         output.accept(FUEL_PROVIDER.get());
+                        output.accept(WATER_PROVIDER.get());
+                        output.accept(FREEZER.get());
                         output.accept(KITCHEN_FLOOR.get());
                         output.accept(MOP.get());
                     })

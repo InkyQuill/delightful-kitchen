@@ -26,6 +26,8 @@
   "gui.delightful_kitchen.chef_counter.kitchen_changed": "Kitchen changed. Reopen the counter and confirm again.",
 
   "block.delightful_kitchen.fuel_provider": "Fuel Provider",
+  "block.delightful_kitchen.water_provider": "Water Provider",
+  "block.delightful_kitchen.freezer": "Freezer",
   "container.delightful_kitchen.fuel_provider": "Fuel Provider",
   "block.delightful_kitchen.kitchen_floor": "Kitchen Floor",
   "item.delightful_kitchen.mop": "Mop",

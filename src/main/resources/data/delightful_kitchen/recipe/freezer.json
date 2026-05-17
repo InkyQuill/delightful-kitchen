@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "III",
+    "IPI",
+    "ISI"
+  ],
+  "key": {
+    "I": { "item": "minecraft:iron_ingot" },
+    "P": { "item": "minecraft:packed_ice" },
+    "S": { "item": "minecraft:snow_block" }
+  },
+  "result": {
+    "id": "delightful_kitchen:freezer",
+    "count": 1
+  }
+}

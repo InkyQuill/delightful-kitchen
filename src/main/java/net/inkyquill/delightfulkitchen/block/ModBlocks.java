@@ -72,6 +72,22 @@ public class ModBlocks {
                             .strength(2.5f, 6.0f)
                             .sound(SoundType.STONE)));
 
+    /** Passive kitchen utility block for future water-aware recipe planning. */
+    public static final DeferredBlock<WaterProviderBlock> WATER_PROVIDER =
+            BLOCKS.register("water_provider",
+                    () -> new WaterProviderBlock(BlockBehaviour.Properties.of()
+                            .mapColor(MapColor.STONE)
+                            .strength(2.0f, 6.0f)
+                            .sound(SoundType.STONE)));
+
+    /** Cold kitchen utility station shell for future freezer recipes. */
+    public static final DeferredBlock<FreezerBlock> FREEZER =
+            BLOCKS.register("freezer",
+                    () -> new FreezerBlock(BlockBehaviour.Properties.of()
+                            .mapColor(MapColor.METAL)
+                            .strength(2.5f, 6.0f)
+                            .sound(SoundType.METAL)));
+
     /** Foundation block for standalone kitchen floor interactions. */
     public static final DeferredBlock<KitchenFloorBlock> KITCHEN_FLOOR =
             BLOCKS.register("kitchen_floor",
