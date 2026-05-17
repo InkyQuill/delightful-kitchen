@@ -1,9 +1,15 @@
 package net.inkyquill.delightfulkitchen.block.entity;
 
-import net.blay09.mods.cookingforblockheads.api.IngredientToken;
-import net.blay09.mods.cookingforblockheads.api.KitchenItemProcessor;
-import net.blay09.mods.cookingforblockheads.api.KitchenOperation;
 import net.inkyquill.delightfulkitchen.block.GrillBlock;
+import net.inkyquill.delightfulkitchen.kitchen.KitchenInventoryService;
+import net.inkyquill.delightfulkitchen.kitchen.KitchenScanner;
+import net.inkyquill.delightfulkitchen.kitchen.KitchenServices;
+import net.inkyquill.delightfulkitchen.kitchen.recipe.KitchenStationType;
+import net.inkyquill.delightfulkitchen.kitchen.recipe.PlanningBlocker;
+import net.inkyquill.delightfulkitchen.kitchen.station.KitchenStation;
+import net.inkyquill.delightfulkitchen.kitchen.station.KitchenStationAcceptResult;
+import net.inkyquill.delightfulkitchen.kitchen.station.KitchenStationJob;
+import net.inkyquill.delightfulkitchen.kitchen.station.KitchenStationStatus;
 import net.inkyquill.delightfulkitchen.menu.GrillMenu;
 import net.inkyquill.delightfulkitchen.util.InventoryHelper;
 import net.minecraft.core.BlockPos;
@@ -22,11 +28,11 @@ import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.CampfireCookingRecipe;
-import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
 
@@ -44,7 +50,7 @@ import java.util.List;
  * Uses campfire cooking recipes - the same type as Farmer's Delight's Stove.
  */
 public class GrillBlockEntity extends BlockEntity
-        implements Container, MenuProvider, Nameable {
+        implements Container, MenuProvider, Nameable, KitchenStation {
 
     public static final int GRILL_SLOTS      = 6;
     public static final int SLOT_INPUT_START  = 0;
@@ -58,6 +64,9 @@ public class GrillBlockEntity extends BlockEntity
     private final int[]       cookTimes    = new int[GRILL_SLOTS];
     private final int[]       cookTotals   = new int[GRILL_SLOTS];
     private final ItemStack[] pending      = new ItemStack[GRILL_SLOTS];
+    private final KitchenStationJob[] queuedJobs = new KitchenStationJob[GRILL_SLOTS];
+    private final boolean[] queuedSlots = new boolean[GRILL_SLOTS];
+    private final boolean[] outputBlocked = new boolean[GRILL_SLOTS];
     private int burnTime = 0;
     private int burnTimeTotal = 200;
     @Nullable private Component customName = null;
@@ -80,36 +89,12 @@ public class GrillBlockEntity extends BlockEntity
         @Override public int getCount() { return 14; }
     };
 
-    private final KitchenItemProcessor processor = new KitchenItemProcessor() {
-        @Override
-        public boolean canProcess(RecipeType<?> recipeType) {
-            return recipeType == RecipeType.CAMPFIRE_COOKING;
-        }
-
-        @Override
-        public KitchenOperation processRecipe(Recipe<?> recipe, List<IngredientToken> ingredientTokens) {
-            if (!(recipe instanceof CampfireCookingRecipe)) return KitchenOperation.EMPTY;
-
-            // Find an available input slot
-            int slot = -1;
-            for (int i = 0; i < GRILL_SLOTS; i++) {
-                if (items.get(SLOT_INPUT_START + i).isEmpty() && pending[i] == null) { slot = i; break; }
-            }
-            if (slot == -1) return KitchenOperation.EMPTY;
-
-            if (ingredientTokens.isEmpty()) return KitchenOperation.EMPTY;
-            ItemStack consumed = ingredientTokens.get(0).consume();
-            if (consumed.isEmpty()) return KitchenOperation.EMPTY;
-
-            // Place the item in the input slot; autonomous tick will start cooking
-            items.set(SLOT_INPUT_START + slot, consumed);
-            setChanged();
-            return KitchenOperation.EMPTY;
-        }
-    };
-
     public GrillBlockEntity(BlockPos pos, BlockState state) {
-        super(ModBlockEntities.GRILL.get(), pos, state);
+        this(ModBlockEntities.GRILL.get(), pos, state);
+    }
+
+    GrillBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
+        super(type, pos, state);
         Arrays.fill(cookTotals, DEFAULT_COOK_TIME);
     }
 
@@ -120,7 +105,7 @@ public class GrillBlockEntity extends BlockEntity
     public static void serverTick(Level level, BlockPos pos, BlockState state, GrillBlockEntity be) {
         // Autonomous: try to start cooking items in input slots that aren't active yet
         for (int i = 0; i < GRILL_SLOTS; i++) {
-            if (be.pending[i] == null && !be.items.get(SLOT_INPUT_START + i).isEmpty()) {
+            if (!be.isQueuedSlot(i) && be.pending[i] == null && !be.items.get(SLOT_INPUT_START + i).isEmpty()) {
                 be.tryStartCooking(level, pos, state, i);
             }
         }
@@ -130,6 +115,11 @@ public class GrillBlockEntity extends BlockEntity
         for (int i = 0; i < GRILL_SLOTS; i++) {
             if (be.pending[i] == null) continue;
             anyPending = true;
+
+            if (be.outputBlocked[i]) {
+                be.finishSlot(level, pos, i);
+                continue;
+            }
 
             if (be.burnTime == 0) be.refuel();
             if (be.burnTime > 0) {
@@ -177,6 +167,11 @@ public class GrillBlockEntity extends BlockEntity
     private void finishSlot(Level level, BlockPos pos, int i) {
         if (pending[i] == null) return;
 
+        if (isQueuedSlot(i)) {
+            finishQueuedSlot(level, i);
+            return;
+        }
+
         // Try pushing to kitchen network first
         ItemStack result = pending[i];
         if (InventoryHelper.pushToKitchen(level, pos, result)) {
@@ -201,6 +196,34 @@ public class GrillBlockEntity extends BlockEntity
         items.set(SLOT_INPUT_START + i, ItemStack.EMPTY);
         pending[i] = null;
         cookTimes[i] = 0;
+    }
+
+    private void finishQueuedSlot(Level level, int i) {
+        ItemStack remainder = routeOutput(level, pending[i]);
+        finishQueuedSlotWithRemainder(i, remainder);
+    }
+
+    void finishQueuedSlotWithRemainder(int i, ItemStack remainder) {
+        if (remainder.isEmpty()) {
+            queuedJobs[i] = null;
+            queuedSlots[i] = false;
+            pending[i] = null;
+            outputBlocked[i] = false;
+            cookTimes[i] = 0;
+            setChanged();
+            return;
+        }
+
+        pending[i] = remainder.copy();
+        outputBlocked[i] = true;
+        setChanged();
+    }
+
+    private ItemStack routeOutput(Level level, ItemStack stack) {
+        var scan = KitchenScanner.scan(level, worldPosition);
+        var endpoints = KitchenServices.inventoryEndpoints(level, scan, worldPosition);
+        var inventory = new KitchenInventoryService(endpoints);
+        return inventory.insert(stack, false);
     }
 
     private void refuel() {
@@ -263,10 +286,137 @@ public class GrillBlockEntity extends BlockEntity
     @Override public void clearContent() { items.replaceAll(ignored -> ItemStack.EMPTY); setChanged(); }
 
     // ------------------------------------------------------------------
-    // KitchenItemProcessorHolder
+    // KitchenStation
     // ------------------------------------------------------------------
 
-    public KitchenItemProcessor getKitchenItemProcessor() { return processor; }
+    @Override
+    public KitchenStationType stationType() {
+        return KitchenStationType.GRILL;
+    }
+
+    @Override
+    public int queueCapacity() {
+        return GRILL_SLOTS;
+    }
+
+    @Override
+    public int queuedJobCount() {
+        int count = 0;
+        for (int i = 0; i < GRILL_SLOTS; i++) {
+            if (isQueuedSlot(i)) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    @Override
+    public KitchenStationStatus stationStatus() {
+        if (hasBlockedOutput()) {
+            return KitchenStationStatus.OUTPUT_BLOCKED;
+        }
+        if (findEmptyQueueSlot() == -1) {
+            return KitchenStationStatus.QUEUE_FULL;
+        }
+        if (hasQueuedJobOrPendingOutput()) {
+            return KitchenStationStatus.RUNNING;
+        }
+        return KitchenStationStatus.IDLE;
+    }
+
+    @Override
+    public KitchenStationAcceptResult canAccept(KitchenStationJob job) {
+        if (job.stationType() != KitchenStationType.GRILL) {
+            return KitchenStationAcceptResult.blocked(PlanningBlocker.MISSING_STATION);
+        }
+        if (findEmptyQueueSlot() == -1) {
+            return KitchenStationAcceptResult.blocked(PlanningBlocker.STATION_QUEUE_FULL);
+        }
+        if (!canStoreFuel(job)) {
+            return KitchenStationAcceptResult.blocked(PlanningBlocker.STATION_QUEUE_FULL);
+        }
+        if (hasBlockedOutput()) {
+            return KitchenStationAcceptResult.blocked(PlanningBlocker.OUTPUT_STORAGE_FULL);
+        }
+        return KitchenStationAcceptResult.acceptedResult();
+    }
+
+    @Override
+    public KitchenStationAcceptResult accept(KitchenStationJob job) {
+        KitchenStationAcceptResult result = canAccept(job);
+        if (!result.accepted()) {
+            return result;
+        }
+
+        int slot = findEmptyQueueSlot();
+        if (slot == -1) {
+            return KitchenStationAcceptResult.blocked(PlanningBlocker.STATION_QUEUE_FULL);
+        }
+
+        queuedJobs[slot] = job;
+        queuedSlots[slot] = true;
+        pending[slot] = job.outputs().getFirst().copy();
+        outputBlocked[slot] = false;
+        cookTimes[slot] = 0;
+        cookTotals[slot] = Math.max(1, job.processingTime());
+        job.fuel().ifPresent(this::addFuel);
+        setChanged();
+        return KitchenStationAcceptResult.acceptedResult();
+    }
+
+    @Override
+    public BlockPos stationPos() {
+        return worldPosition.immutable();
+    }
+
+    private int findEmptyQueueSlot() {
+        for (int i = 0; i < GRILL_SLOTS; i++) {
+            if (!isQueuedSlot(i) && pending[i] == null && items.get(SLOT_INPUT_START + i).isEmpty()) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private boolean hasBlockedOutput() {
+        for (boolean blocked : outputBlocked) {
+            if (blocked) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasQueuedJobOrPendingOutput() {
+        for (int i = 0; i < GRILL_SLOTS; i++) {
+            if (isQueuedSlot(i) || pending[i] != null) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isQueuedSlot(int slot) {
+        return queuedJobs[slot] != null || queuedSlots[slot];
+    }
+
+    private void addFuel(ItemStack fuel) {
+        ItemStack existing = items.get(SLOT_FUEL);
+        if (existing.isEmpty()) {
+            items.set(SLOT_FUEL, fuel.copy());
+        } else if (ItemStack.isSameItemSameComponents(existing, fuel)) {
+            existing.grow(fuel.getCount());
+        }
+    }
+
+    private boolean canStoreFuel(KitchenStationJob job) {
+        return job.fuel()
+                .map(fuel -> {
+                    ItemStack existing = items.get(SLOT_FUEL);
+                    return existing.isEmpty() || ItemStack.isSameItemSameComponents(existing, fuel);
+                })
+                .orElse(true);
+    }
 
     // ------------------------------------------------------------------
     // MenuProvider / Nameable
@@ -303,6 +453,9 @@ public class GrillBlockEntity extends BlockEntity
         }
         items.replaceAll(ignored -> ItemStack.EMPTY);
         Arrays.fill(pending, null);
+        Arrays.fill(queuedJobs, null);
+        Arrays.fill(queuedSlots, false);
+        Arrays.fill(outputBlocked, false);
     }
 
     // ------------------------------------------------------------------
@@ -315,6 +468,8 @@ public class GrillBlockEntity extends BlockEntity
         ContainerHelper.saveAllItems(tag, items, registries);
         tag.putIntArray("CookTimes",  cookTimes);
         tag.putIntArray("CookTotals", cookTotals);
+        tag.putIntArray("QueuedSlots", toIntArray(queuedSlots));
+        tag.putIntArray("OutputBlocked", toIntArray(outputBlocked));
         tag.putInt("BurnTime", burnTime);
         tag.putInt("BurnTimeTotal", burnTimeTotal);
         for (int i = 0; i < GRILL_SLOTS; i++) {
@@ -329,16 +484,32 @@ public class GrillBlockEntity extends BlockEntity
     protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.loadAdditional(tag, registries);
         ContainerHelper.loadAllItems(tag, items, registries);
+        Arrays.fill(pending, null);
+        Arrays.fill(queuedJobs, null);
+        Arrays.fill(queuedSlots, false);
+        Arrays.fill(outputBlocked, false);
         int[] ct = tag.getIntArray("CookTimes"),  tot = tag.getIntArray("CookTotals");
         for (int i = 0; i < GRILL_SLOTS && i < ct.length;  i++) cookTimes[i]  = ct[i];
         for (int i = 0; i < GRILL_SLOTS && i < tot.length; i++) cookTotals[i] = tot[i];
+        int[] queued = tag.getIntArray("QueuedSlots");
+        int[] blocked = tag.getIntArray("OutputBlocked");
         burnTime = tag.getInt("BurnTime");
         burnTimeTotal = tag.getInt("BurnTimeTotal");
         for (int i = 0; i < GRILL_SLOTS; i++) {
             if (tag.contains("Pending" + i))
                 pending[i] = ItemStack.parse(registries, tag.getCompound("Pending" + i)).orElse(null);
+            queuedSlots[i] = i < queued.length && queued[i] != 0 && pending[i] != null;
+            outputBlocked[i] = i < blocked.length && blocked[i] != 0 && queuedSlots[i];
         }
         if (tag.contains("CustomName"))
             customName = Component.Serializer.fromJson(tag.getString("CustomName"), registries);
+    }
+
+    private static int[] toIntArray(boolean[] values) {
+        int[] tags = new int[values.length];
+        for (int i = 0; i < values.length; i++) {
+            tags[i] = values[i] ? 1 : 0;
+        }
+        return tags;
     }
 }
