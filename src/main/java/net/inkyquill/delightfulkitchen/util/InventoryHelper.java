@@ -1,6 +1,7 @@
 package net.inkyquill.delightfulkitchen.util;
 
 import net.blay09.mods.cookingforblockheads.api.KitchenItemProvider;
+import net.inkyquill.delightfulkitchen.block.ModBlocks;
 import net.inkyquill.delightfulkitchen.block.entity.CabinetOfHoldingBlockEntity;
 import net.inkyquill.delightfulkitchen.block.entity.AutoCutterBlockEntity;
 import net.inkyquill.delightfulkitchen.block.entity.FuelProviderBlockEntity;
@@ -24,6 +25,7 @@ import net.neoforged.neoforge.capabilities.BlockCapability;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 public final class InventoryHelper {
@@ -46,7 +48,9 @@ public final class InventoryHelper {
 
     /**
      * Pushes {@code stack} into the kitchen connected to {@code from},
-     * preferring {@link CabinetOfHoldingBlockEntity} over other containers.
+     * using the standalone Kitchen Floor inventory service when present.
+     * The legacy provider-network fallback still prefers
+     * {@link CabinetOfHoldingBlockEntity} over other containers.
      * Mutates stack.count. Skips machine block entities (Grill, PotStand, etc.)
      * that should not receive output.
      *
@@ -87,7 +91,12 @@ public final class InventoryHelper {
     }
 
     private static void pushToKitchenFloor(Level level, BlockPos from, ItemStack stack) {
-        var scan = KitchenScanner.scan(level, from);
+        Optional<BlockPos> anchor = findKitchenScanAnchor(level, from);
+        if (anchor.isEmpty()) {
+            return;
+        }
+
+        var scan = KitchenScanner.scan(level, anchor.orElseThrow());
         if (!scan.hasKitchenFloor()) {
             return;
         }
@@ -123,11 +132,26 @@ public final class InventoryHelper {
     }
 
     private static void pushFuelToKitchenFloor(Level level, BlockPos from, ItemStack fuelStack) {
-        var scan = KitchenScanner.scan(level, from);
+        Optional<BlockPos> anchor = findKitchenScanAnchor(level, from);
+        if (anchor.isEmpty()) {
+            return;
+        }
+
+        var scan = KitchenScanner.scan(level, anchor.orElseThrow());
         if (!scan.hasKitchenFloor()) {
             return;
         }
         pushFuelToStations(level, from, scan.memberBlocks(), fuelStack);
+    }
+
+    private static Optional<BlockPos> findKitchenScanAnchor(Level level, BlockPos from) {
+        for (int yOffset = 1; yOffset <= KitchenScanner.MAX_SCAN_HEIGHT; yOffset++) {
+            BlockPos floor = from.below(yOffset);
+            if (level.getBlockState(floor).is(ModBlocks.KITCHEN_FLOOR.get())) {
+                return Optional.of(floor.above());
+            }
+        }
+        return Optional.empty();
     }
 
     private static void pushFuelToStations(Level level, BlockPos from, Iterable<BlockPos> positions, ItemStack fuelStack) {

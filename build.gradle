@@ -110,7 +110,7 @@ dependencies {
     compileOnly files("../CookingForBlockheads/neoforge/build/libs/cookingforblockheads-neoforge-${minecraft_version}-${cfb_version}.jar")
     localRuntime files("../CookingForBlockheads/neoforge/build/libs/cookingforblockheads-neoforge-${minecraft_version}-${cfb_version}.jar")
 
-    // Balm - used directly in FarmersDelightCompat; not transitively visible from compileOnly CfB
+    // Balm - required by Cooking for Blockheads at runtime; file dependencies are not transitive.
     compileOnly("net.blay09.mods:balm-neoforge:${balm_version}") { changing = true }
     localRuntime("net.blay09.mods:balm-neoforge:${balm_version}") { changing = true }
 
