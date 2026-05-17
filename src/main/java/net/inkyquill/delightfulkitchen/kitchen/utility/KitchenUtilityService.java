@@ -1,12 +1,8 @@
 package net.inkyquill.delightfulkitchen.kitchen.utility;
 
-import net.inkyquill.delightfulkitchen.DelightfulKitchen;
 import net.inkyquill.delightfulkitchen.kitchen.KitchenInventoryService;
 import net.inkyquill.delightfulkitchen.kitchen.KitchenScanResult;
 import net.inkyquill.delightfulkitchen.kitchen.recipe.PlanningBlocker;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.tags.TagKey;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
@@ -16,9 +12,6 @@ import java.util.Optional;
 import java.util.function.Predicate;
 
 public final class KitchenUtilityService {
-    public static final TagKey<Item> WATER_CONTAINERS =
-            TagKey.create(Registries.ITEM, DelightfulKitchen.id("water_containers"));
-
     private final KitchenScanResult scan;
     private final KitchenInventoryService inventory;
 
@@ -94,7 +87,7 @@ public final class KitchenUtilityService {
     }
 
     private boolean isWaterContainer(ItemStack stack) {
-        return stack.is(WATER_CONTAINERS) || isBucket(stack) || isGlassBottle(stack);
+        return isBucket(stack) || isGlassBottle(stack);
     }
 
     private static boolean isIceContainer(ItemStack stack) {
