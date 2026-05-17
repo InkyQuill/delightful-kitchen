@@ -4,6 +4,7 @@ import net.inkyquill.delightfulkitchen.block.ModBlocks;
 import net.inkyquill.delightfulkitchen.block.entity.AutoCutterBlockEntity;
 import net.inkyquill.delightfulkitchen.block.entity.GrillBlockEntity;
 import net.inkyquill.delightfulkitchen.block.entity.PotStandBlockEntity;
+import net.inkyquill.delightfulkitchen.kitchen.station.KitchenStation;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.Container;
@@ -57,6 +58,7 @@ public final class KitchenScanner {
     private static boolean isCompatibleMember(Level level, BlockPos pos) {
         BlockEntity blockEntity = level.getBlockEntity(pos);
         return blockEntity instanceof Container
+                || blockEntity instanceof KitchenStation
                 || level.getCapability(Capabilities.ItemHandler.BLOCK, pos, null) != null
                 || level.getBlockState(pos).is(ModBlocks.CHEF_COUNTER.get());
     }

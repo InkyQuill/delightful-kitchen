@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class KitchenStationServiceTest {
@@ -50,6 +51,42 @@ class KitchenStationServiceTest {
         ));
 
         assertTrue(service.firstAccepting(job(KitchenStationType.GRILL)).isEmpty());
+    }
+
+    @Test
+    void skipsStationsWithDifferentType() {
+        KitchenStationService service = new KitchenStationService(List.of(
+                new KitchenStationEndpoint(new BlockPos(1, 64, 1),
+                        new FakeStation(KitchenStationType.GRILL, 4, 0, true))
+        ));
+
+        assertTrue(service.firstAccepting(job(KitchenStationType.CUTTING_BOARD)).isEmpty());
+    }
+
+    @Test
+    void choosesLowerPositionWhenQueuedCountsTie() {
+        BlockPos lower = new BlockPos(1, 64, 1);
+        BlockPos higher = new BlockPos(2, 64, 2);
+        KitchenStationService service = new KitchenStationService(List.of(
+                new KitchenStationEndpoint(higher, new FakeStation(KitchenStationType.GRILL, 4, 1, true)),
+                new KitchenStationEndpoint(lower, new FakeStation(KitchenStationType.GRILL, 4, 1, true))
+        ));
+
+        Optional<KitchenStationEndpoint> endpoint = service.firstAccepting(job(KitchenStationType.GRILL));
+
+        assertTrue(endpoint.isPresent());
+        assertEquals(lower, endpoint.orElseThrow().pos());
+    }
+
+    @Test
+    void reportsWhetherStationTypeExists() {
+        KitchenStationService service = new KitchenStationService(List.of(
+                new KitchenStationEndpoint(new BlockPos(1, 64, 1),
+                        new FakeStation(KitchenStationType.GRILL, 4, 0, true))
+        ));
+
+        assertTrue(service.hasStation(KitchenStationType.GRILL));
+        assertFalse(service.hasStation(KitchenStationType.CRAFTING));
     }
 
     private static KitchenStationJob job(KitchenStationType type) {
