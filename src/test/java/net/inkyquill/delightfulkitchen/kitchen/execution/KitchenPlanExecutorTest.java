@@ -293,7 +293,7 @@ class KitchenPlanExecutorTest {
 
     private static KitchenScanResult scan() {
         return new KitchenScanResult(true, Set.of(BlockPos.ZERO.below()),
-                List.of(BlockPos.ZERO, new BlockPos(1, 64, 0)), List.of());
+                List.of(BlockPos.ZERO, new BlockPos(1, 64, 0)), List.of(), List.of(), List.of());
     }
 
     private static RecipePlan plan(PlannedRecipe... steps) {

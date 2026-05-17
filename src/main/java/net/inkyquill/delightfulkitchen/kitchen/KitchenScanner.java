@@ -30,16 +30,26 @@ public final class KitchenScanner {
         BlockPos counter = counterPos.immutable();
         BlockPos startFloor = counter.below();
         if (!level.getBlockState(startFloor).is(ModBlocks.KITCHEN_FLOOR.get())) {
-            return new KitchenScanResult(false, Set.of(), List.of(), List.of(counter));
+            return new KitchenScanResult(false, Set.of(), List.of(), List.of(counter), List.of(), List.of());
         }
 
         Set<BlockPos> floors = findConnectedFloors(level, startFloor);
         List<BlockPos> members = new ArrayList<>();
         Set<BlockPos> counters = new LinkedHashSet<>();
+        List<BlockPos> waterProviders = new ArrayList<>();
+        List<BlockPos> freezers = new ArrayList<>();
 
         for (BlockPos floor : floors) {
             for (int yOffset = 1; yOffset <= MAX_SCAN_HEIGHT; yOffset++) {
                 BlockPos pos = floor.above(yOffset).immutable();
+                if (level.getBlockState(pos).is(ModBlocks.WATER_PROVIDER.get())) {
+                    waterProviders.add(pos);
+                    continue;
+                }
+                if (level.getBlockState(pos).is(ModBlocks.FREEZER.get())) {
+                    freezers.add(pos);
+                    continue;
+                }
                 if (!isCompatibleMember(level, pos)) {
                     continue;
                 }
@@ -52,10 +62,15 @@ public final class KitchenScanner {
         }
 
         counters.add(counter);
-        return new KitchenScanResult(true, floors, List.copyOf(members), List.copyOf(counters));
+        return new KitchenScanResult(true, floors, List.copyOf(members), List.copyOf(counters),
+                List.copyOf(waterProviders), List.copyOf(freezers));
     }
 
     private static boolean isCompatibleMember(Level level, BlockPos pos) {
+        if (level.getBlockState(pos).is(ModBlocks.WATER_PROVIDER.get())
+                || level.getBlockState(pos).is(ModBlocks.FREEZER.get())) {
+            return false;
+        }
         BlockEntity blockEntity = level.getBlockEntity(pos);
         return blockEntity instanceof Container
                 || blockEntity instanceof KitchenStation

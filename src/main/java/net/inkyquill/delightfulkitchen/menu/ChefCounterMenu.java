@@ -29,14 +29,16 @@ import java.util.List;
 import java.util.Set;
 
 public class ChefCounterMenu extends AbstractContainerMenu {
-    private static final int DATA_SIZE = 7;
+    private static final int DATA_SIZE = 9;
     private static final int DATA_FLOOR_COUNT = 0;
     private static final int DATA_INVENTORY_COUNT = 1;
     private static final int DATA_MULTIPLE_COUNTERS = 2;
-    private static final int DATA_RECIPE_COUNT = 3;
-    private static final int DATA_READY_COUNT = 4;
-    private static final int DATA_INTERMEDIATE_COUNT = 5;
-    private static final int DATA_BLOCKED_COUNT = 6;
+    private static final int DATA_WATER_PROVIDER_COUNT = 3;
+    private static final int DATA_FREEZER_COUNT = 4;
+    private static final int DATA_RECIPE_COUNT = 5;
+    private static final int DATA_READY_COUNT = 6;
+    private static final int DATA_INTERMEDIATE_COUNT = 7;
+    private static final int DATA_BLOCKED_COUNT = 8;
 
     private final ContainerLevelAccess access;
     private final ContainerData data;
@@ -69,9 +71,11 @@ public class ChefCounterMenu extends AbstractContainerMenu {
     private static ContainerData createServerData(ContainerLevelAccess access) {
         SimpleContainerData data = new SimpleContainerData(DATA_SIZE);
         KitchenScanResult scan = access.evaluate(KitchenScanner::scan)
-                .orElseGet(() -> new KitchenScanResult(false, Set.of(), List.of(), List.of()));
+                .orElseGet(() -> new KitchenScanResult(false, Set.of(), List.of(), List.of(), List.of(), List.of()));
         data.set(DATA_FLOOR_COUNT, scan.floorCount());
         data.set(DATA_MULTIPLE_COUNTERS, scan.hasMultipleCounters() ? 1 : 0);
+        data.set(DATA_WATER_PROVIDER_COUNT, scan.waterProviders().size());
+        data.set(DATA_FREEZER_COUNT, scan.freezers().size());
 
         if (!scan.hasKitchenFloor()) {
             return data;
@@ -137,6 +141,22 @@ public class ChefCounterMenu extends AbstractContainerMenu {
 
     public boolean hasMultipleCounters() {
         return data.get(DATA_MULTIPLE_COUNTERS) != 0;
+    }
+
+    public int getWaterProviderCount() {
+        return data.get(DATA_WATER_PROVIDER_COUNT);
+    }
+
+    public boolean hasWaterProvider() {
+        return getWaterProviderCount() > 0;
+    }
+
+    public int getFreezerCount() {
+        return data.get(DATA_FREEZER_COUNT);
+    }
+
+    public boolean hasFreezer() {
+        return getFreezerCount() > 0;
     }
 
     public int getRecipeCount() {

@@ -38,29 +38,42 @@ public class ChefCounterScreen extends AbstractContainerScreen<ChefCounterMenu> 
                 titleLabelX, 22, 0x404040, false);
         graphics.drawString(font,
                 Component.translatable("gui.delightful_kitchen.chef_counter.members", menu.getInventoryCount()),
-                titleLabelX, 34, 0x404040, false);
+                titleLabelX, 32, 0x404040, false);
+        graphics.drawString(font,
+                Component.translatable("gui.delightful_kitchen.chef_counter.water_provider",
+                        utilityStatus(menu.hasWaterProvider())),
+                titleLabelX, 42, 0x404040, false);
+        graphics.drawString(font,
+                Component.translatable("gui.delightful_kitchen.chef_counter.freezer", utilityStatus(menu.hasFreezer())),
+                titleLabelX, 52, 0x404040, false);
         graphics.drawString(font,
                 Component.translatable("gui.delightful_kitchen.chef_counter.recipes", menu.getRecipeCount()),
-                titleLabelX, 46, 0x404040, false);
+                titleLabelX, 64, 0x404040, false);
         graphics.drawString(font,
                 Component.translatable("gui.delightful_kitchen.chef_counter.ready", menu.getReadyCount()),
-                titleLabelX, 58, 0x404040, false);
+                titleLabelX, 74, 0x404040, false);
         graphics.drawString(font,
                 Component.translatable("gui.delightful_kitchen.chef_counter.intermediates", menu.getIntermediateCount()),
-                titleLabelX, 70, 0x404040, false);
+                titleLabelX, 84, 0x404040, false);
         graphics.drawString(font,
                 Component.translatable("gui.delightful_kitchen.chef_counter.blocked", menu.getBlockedCount()),
-                titleLabelX, 82, 0x404040, false);
+                titleLabelX, 94, 0x404040, false);
         if (menu.hasMultipleCounters()) {
             List<FormattedCharSequence> warningLines = font.split(
                     Component.translatable("gui.delightful_kitchen.chef_counter.multiple_counters"), imageWidth - 16);
-            for (int i = 0; i < Math.min(warningLines.size(), 2); i++) {
-                graphics.drawString(font, warningLines.get(i), titleLabelX, 92 + i * 10, 0xAA3322, false);
+            for (int i = 0; i < Math.min(warningLines.size(), 1); i++) {
+                graphics.drawString(font, warningLines.get(i), titleLabelX, 106, 0xAA3322, false);
             }
         } else if (menu.getFloorCount() == 0) {
-            graphics.drawString(font, STATUS_UNLINKED, titleLabelX, 92, 0x404040, false);
+            graphics.drawString(font, STATUS_UNLINKED, titleLabelX, 106, 0x404040, false);
         }
         graphics.drawString(font, playerInventoryTitle, inventoryLabelX, inventoryLabelY, 0x404040, false);
+    }
+
+    private static Component utilityStatus(boolean present) {
+        return Component.translatable(present
+                ? "gui.delightful_kitchen.chef_counter.utility_present"
+                : "gui.delightful_kitchen.chef_counter.utility_missing");
     }
 
     @Override
