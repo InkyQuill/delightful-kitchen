@@ -33,6 +33,7 @@
   "block.delightful_kitchen.water_provider": "Water Provider",
   "block.delightful_kitchen.freezer": "Freezer",
   "container.delightful_kitchen.fuel_provider": "Fuel Provider",
+  "container.delightful_kitchen.freezer": "Freezer",
   "block.delightful_kitchen.kitchen_floor": "Kitchen Floor",
   "item.delightful_kitchen.mop": "Mop",
 
@@ -48,6 +49,14 @@
   "gui.delightful_kitchen.fuel": "Fuel",
   "gui.delightful_kitchen.container": "Container",
   "gui.delightful_kitchen.ingredients": "Ingredients",
+  "gui.delightful_kitchen.freezer.mode.ice_and_snow": "Ice & Snow",
+  "gui.delightful_kitchen.freezer.mode.ice_only": "Ice Only",
+  "gui.delightful_kitchen.freezer.mode.snow_only": "Snow Only",
+  "gui.delightful_kitchen.freezer.mode.paused": "Paused",
+  "gui.delightful_kitchen.freezer.status.active": "Making %s",
+  "gui.delightful_kitchen.freezer.status.waiting": "Waiting: %s",
+  "gui.delightful_kitchen.freezer.status.paused": "Paused",
+  "gui.delightful_kitchen.freezer.progress": "%s/%s ticks",
 
   "itemGroup.delightful_kitchen": "Delightful Kitchen",
 

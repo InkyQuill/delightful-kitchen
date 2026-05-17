@@ -31,6 +31,18 @@ public final class KitchenScanner {
         return scan(new LevelScanView(level), counterPos);
     }
 
+    public static KitchenScanResult scanFromKitchenBlock(Level level, BlockPos blockPos) {
+        return scanFromKitchenBlock(new LevelScanView(level), blockPos);
+    }
+
+    static KitchenScanResult scanFromKitchenBlock(ScanView view, BlockPos blockPos) {
+        BlockPos floor = findUtilityFloor(view, blockPos);
+        if (floor == null) {
+            return new KitchenScanResult(false, Set.of(), List.of(), List.of(), List.of(), List.of());
+        }
+        return scanFromFloor(view, floor, blockPos);
+    }
+
     static KitchenScanResult scan(ScanView view, BlockPos counterPos) {
         BlockPos counter = counterPos.immutable();
         BlockPos startFloor = counter.below();
@@ -38,6 +50,11 @@ public final class KitchenScanner {
             return new KitchenScanResult(false, Set.of(), List.of(), List.of(counter), List.of(), List.of());
         }
 
+        return scanFromFloor(view, startFloor, counter);
+    }
+
+    private static KitchenScanResult scanFromFloor(ScanView view, BlockPos startFloor, BlockPos anchorPos) {
+        BlockPos anchor = anchorPos.immutable();
         Set<BlockPos> floors = findConnectedFloors(view, startFloor);
         List<BlockPos> members = new ArrayList<>();
         Set<BlockPos> counters = new LinkedHashSet<>();
@@ -66,9 +83,30 @@ public final class KitchenScanner {
             }
         }
 
-        counters.add(counter);
+        if (view.isWaterProvider(anchor) && !waterProviders.contains(anchor)) {
+            waterProviders.add(anchor);
+        }
+        if (view.isFreezer(anchor) && !freezers.contains(anchor)) {
+            freezers.add(anchor);
+        }
+        counters.add(anchor);
         return new KitchenScanResult(true, floors, List.copyOf(members), List.copyOf(counters),
                 List.copyOf(waterProviders), List.copyOf(freezers));
+    }
+
+    @Nullable
+    private static BlockPos findUtilityFloor(ScanView view, BlockPos blockPos) {
+        BlockPos directFloor = blockPos.below();
+        if (view.isKitchenFloor(directFloor)) {
+            return directFloor;
+        }
+        for (Direction direction : Direction.Plane.HORIZONTAL) {
+            BlockPos nearbyFloor = blockPos.relative(direction).below();
+            if (view.isKitchenFloor(nearbyFloor)) {
+                return nearbyFloor;
+            }
+        }
+        return null;
     }
 
     private static boolean isCompatibleMember(ScanView view, BlockPos pos) {

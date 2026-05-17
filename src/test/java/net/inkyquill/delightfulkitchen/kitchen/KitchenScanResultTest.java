@@ -39,6 +39,40 @@ class KitchenScanResultTest {
     }
 
     @Test
+    void scannerCanAnchorFromUtilityBlockAdjacentToKitchenFloor() {
+        BlockPos freezer = new BlockPos(0, 65, 0);
+        BlockPos floor = freezer.east().below();
+        KitchenScanner.ScanView view = new TestScanView(
+                Set.of(floor),
+                Set.of(),
+                Set.of(freezer),
+                Set.of()
+        );
+
+        KitchenScanResult result = KitchenScanner.scanFromKitchenBlock(view, freezer);
+
+        assertTrue(result.hasKitchenFloor());
+        assertTrue(result.hasFreezer());
+        assertEquals(List.of(freezer), result.freezers());
+    }
+
+    @Test
+    void scannerReportsMissingKitchenFloorFromUnlinkedUtilityBlock() {
+        BlockPos freezer = new BlockPos(0, 65, 0);
+        KitchenScanner.ScanView view = new TestScanView(
+                Set.of(),
+                Set.of(),
+                Set.of(freezer),
+                Set.of()
+        );
+
+        KitchenScanResult result = KitchenScanner.scanFromKitchenBlock(view, freezer);
+
+        assertFalse(result.hasKitchenFloor());
+        assertFalse(result.hasFreezer());
+    }
+
+    @Test
     void copiesUtilityPositionsDefensively() {
         List<BlockPos> waterProviders = new ArrayList<>(List.of(new BlockPos(1, 64, 0)));
         List<BlockPos> freezers = new ArrayList<>(List.of(new BlockPos(2, 64, 0)));
