@@ -304,14 +304,14 @@ public final class RecipePlanner {
             return Optional.of(PlanAttempt.blocked(target, snapshot, appendStep(steps, utilityStep), blockers));
         }
 
-        Optional<List<ItemStack>> matchesWithoutUtility = IngredientMatcher.findMatches(snapshot,
+        KitchenInventorySnapshot reserved = snapshot.withConsumed(containerMatch.orElseThrow());
+        Optional<List<ItemStack>> matchesWithoutUtility = IngredientMatcher.findMatches(reserved,
                 requiredIngredients(utilityStep));
         if (matchesWithoutUtility.isEmpty()) {
             return Optional.empty();
         }
 
-        KitchenInventorySnapshot completed = snapshot.withConsumed(matchesWithoutUtility.orElseThrow())
-                .withConsumed(containerMatch.orElseThrow());
+        KitchenInventorySnapshot completed = reserved.withConsumed(matchesWithoutUtility.orElseThrow());
         List<PlannedRecipe> completedSteps = appendStep(steps, utilityStep);
         return Optional.of(new PlanAttempt(
                 target,

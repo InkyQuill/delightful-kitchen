@@ -162,6 +162,37 @@ class RecipeUtilityPlannerTest {
         assertTrue(plan.blockers().contains(PlanningBlocker.MISSING_RAW_INGREDIENT));
     }
 
+    @Test
+    void utilityContainerCannotAlsoSatisfyPhysicalIngredientInSameStep() {
+        PlannedRecipe bucketedDough = new PlannedRecipe(
+                ResourceLocation.fromNamespaceAndPath("delightful_kitchen", "bucketed_dough"),
+                List.of(
+                        new PlannedIngredient(Ingredient.of(Items.WATER_BUCKET), 1),
+                        new PlannedIngredient(Ingredient.of(Items.BUCKET), 1),
+                        new PlannedIngredient(Ingredient.of(Items.WHEAT), 1)
+                ),
+                List.of(new ItemStack(Items.BREAD)),
+                KitchenStationType.CRAFTING,
+                Optional.empty(),
+                Optional.empty(),
+                KitchenUtilityRequirement.NONE,
+                0,
+                false
+        );
+        KitchenInventoryService oneBucket = inventory(new ItemStack(Items.WHEAT), new ItemStack(Items.BUCKET));
+        KitchenInventoryService twoBuckets = inventory(new ItemStack(Items.WHEAT), new ItemStack(Items.BUCKET, 2));
+
+        RecipePlan blockedPlan = planner(bucketedDough, service(scan(true, false), oneBucket))
+                .plan(bucketedDough, oneBucket.snapshot());
+        RecipePlan readyPlan = planner(bucketedDough, service(scan(true, false), twoBuckets))
+                .plan(bucketedDough, twoBuckets.snapshot());
+
+        assertEquals(PlanState.BLOCKED, blockedPlan.state());
+        assertEquals(PlanState.READY, readyPlan.state());
+        assertEquals(KitchenUtilityRequirement.WATER, readyPlan.steps().getFirst().utilityRequirement());
+        assertEquals(List.of(Items.BUCKET, Items.WHEAT), plannedIngredientItems(readyPlan.steps().getFirst()));
+    }
+
     private static RecipePlanner planner(PlannedRecipe recipe, KitchenUtilityService utilityService) {
         return new RecipePlanner(new RecipeIndex(List.of(recipe)), Set.of(KitchenStationType.CRAFTING), utilityService);
     }
