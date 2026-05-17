@@ -405,8 +405,6 @@ git commit -m "feat: scan kitchen utility blocks"
 - Modify: `src/main/java/net/inkyquill/delightfulkitchen/kitchen/KitchenServices.java`
 - Modify: `src/main/java/net/inkyquill/delightfulkitchen/kitchen/KitchenInventoryEndpoint.java`
 - Modify: `src/main/java/net/inkyquill/delightfulkitchen/kitchen/KitchenInventoryService.java`
-- Create: `src/main/resources/data/delightful_kitchen/tags/item/water_containers.json`
-- Create: `src/main/resources/data/delightful_kitchen/tags/item/cold_containers.json`
 - Test: `src/test/java/net/inkyquill/delightfulkitchen/kitchen/utility/KitchenUtilityServiceTest.java`
 
 - [ ] **Step 1: Write reservation tests**
@@ -491,37 +489,15 @@ Blocker mapping:
 - `SNOWBALL` missing water provider -> `MISSING_WATER_PROVIDER`
 - `SNOWBALL` missing bottle -> `MISSING_SNOWBALL_CONTAINER`
 
-- [ ] **Step 6: Add container tags**
+- [ ] **Step 6: Use explicit v1 container matching**
 
-Create:
+Do not create public container tags for this task. V1 matching must stay explicit to avoid false extension points before custom container semantics exist:
 
-```json
-{
-  "replace": false,
-  "values": [
-    "minecraft:bucket",
-    "minecraft:glass_bottle"
-  ]
-}
-```
+- `WATER`: `Items.BUCKET` or `Items.GLASS_BOTTLE`.
+- `ICE`: `Items.BUCKET` only.
+- `SNOWBALL`: `Items.GLASS_BOTTLE` only.
 
-for `water_containers.json`.
-
-Create:
-
-```json
-{
-  "replace": false,
-  "values": [
-    "minecraft:bucket",
-    "minecraft:glass_bottle"
-  ]
-}
-```
-
-for `cold_containers.json`.
-
-`KitchenUtilityService` should still enforce bucket-only for `ICE` and bottle-only for `SNOWBALL` in v1, because the spec assigns different physical transport containers.
+Custom container tags are deferred until the planner/executor can define how custom containers are filled, emptied, returned, and represented in recipes.
 
 - [ ] **Step 7: Verify**
 
@@ -538,7 +514,6 @@ Expected: all tests pass.
 
 ```bash
 git add src/main/java/net/inkyquill/delightfulkitchen/kitchen \
-  src/main/resources/data/delightful_kitchen/tags/item \
   src/test/java/net/inkyquill/delightfulkitchen/kitchen/utility
 git commit -m "feat: add kitchen utility reservations"
 ```
@@ -862,7 +837,7 @@ Implemented utility scanning, Water Provider, Freezer, borrowed-container reserv
 In `docs/superpowers/specs/2026-05-16-delightful-rename-and-utilities.md`, update the status note from future work to implemented for Water Provider and Freezer, and record any intentional deviation. At minimum document:
 
 - Virtual utility provision supports shaped/shapeless crafting in this milestone.
-- Container tags exist, but ice uses buckets and snowball uses bottles in v1.
+- Container tags are intentionally deferred; v1 uses buckets and glass bottles only.
 - Passive Freezer production is single-Freezer throughput; multiple Freezers provide redundancy only.
 
 - [ ] **Step 5: Update README if needed**

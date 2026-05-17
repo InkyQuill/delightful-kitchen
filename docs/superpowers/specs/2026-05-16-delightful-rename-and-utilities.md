@@ -326,12 +326,13 @@ If Container Storage is full when a container needs to be returned after a recip
 
 ### Mod Compatibility
 
-Other mods may add items tagged as water containers or cold containers. The planner checks item tags rather than hardcoded item IDs:
+Milestone 3 v1 intentionally uses explicit vanilla empty containers only:
 
-- `delightful_kitchen:water_containers` — items that can carry water (default: `minecraft:bucket`, `minecraft:glass_bottle`).
-- `delightful_kitchen:cold_containers` — items that can carry ice/snow (default: same as water containers, since ice is frozen water).
+- Water Provider borrows `minecraft:bucket` or `minecraft:glass_bottle`.
+- Freezer ice provision borrows `minecraft:bucket`.
+- Freezer snowball provision borrows `minecraft:glass_bottle`.
 
-If a mod adds a "ceramic jug" tagged `delightful_kitchen:water_containers`, it works as a water container automatically.
+Custom tagged containers are deferred until custom container semantics are designed. The utility system must know how a custom container is filled, emptied, returned, and represented in recipes before public compatibility tags can be a truthful extension point.
 
 ### Multiple Water Providers / Freezers
 
