@@ -78,6 +78,7 @@ public final class KitchenPlanExecutor {
             KitchenStationJob job = stationJobs.get(index);
             var accepted = endpoints.orElseThrow().get(index).station().accept(job);
             if (!accepted.accepted()) {
+                rollbackUnacceptedStationJobs(stationJobs, index);
                 throw new IllegalStateException(
                         "Station accept failed after validation for " + job.recipeId() + ": " + accepted.blockers()
                 );
@@ -244,6 +245,13 @@ public final class KitchenPlanExecutor {
         for (int index = jobs.size() - 1; index >= 0; index--) {
             ExtractedJob extracted = jobs.get(index);
             rollbackExtractedJob(extracted.job(), extracted.insertedInstantOutputs());
+        }
+    }
+
+    private void rollbackUnacceptedStationJobs(List<KitchenStationJob> stationJobs, int firstUnacceptedIndex) {
+        for (int index = stationJobs.size() - 1; index >= firstUnacceptedIndex; index--) {
+            KitchenStationJob job = stationJobs.get(index);
+            rollbackExtractedParts(job.inputs(), job.servingContainer(), job.fuel());
         }
     }
 

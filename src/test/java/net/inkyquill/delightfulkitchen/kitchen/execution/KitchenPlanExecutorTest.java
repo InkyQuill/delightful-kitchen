@@ -18,6 +18,8 @@ import net.inkyquill.delightfulkitchen.kitchen.station.KitchenStationService;
 import net.inkyquill.delightfulkitchen.kitchen.station.KitchenStationStatus;
 import net.minecraft.SharedConstants;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.Bootstrap;
 import net.minecraft.world.SimpleContainer;
@@ -97,6 +99,27 @@ class KitchenPlanExecutorTest {
                 new KitchenInventorySnapshot(List.of(new ItemStack(Items.APPLE))));
 
         KitchenPlanExecutionResult result = executor(inventory, station, scan).confirm(plan, appleFingerprint);
+
+        assertFalse(result.queued());
+        assertTrue(result.blockers().contains(PlanningBlocker.KITCHEN_CHANGED));
+        assertEquals(1, source.getItem(0).getCount());
+        assertEquals(0, station.acceptedJobCount());
+    }
+
+    @Test
+    void returnsKitchenChangedWhenFingerprintComponentsDiffer() {
+        ItemStack namedBeef = new ItemStack(Items.BEEF);
+        namedBeef.set(DataComponents.CUSTOM_NAME, Component.literal("Counter Beef"));
+        SimpleContainer source = new SimpleContainer(namedBeef, ItemStack.EMPTY);
+        FakeStation station = new FakeStation(KitchenStationType.GRILL, 1, 0);
+        KitchenInventoryService inventory = inventory(source);
+        KitchenScanResult scan = scan();
+        RecipePlan plan = plan(recipe("grilled_beef", KitchenStationType.GRILL,
+                List.of(ingredient(Items.BEEF, 1)), List.of(new ItemStack(Items.COOKED_BEEF))));
+        KitchenPlanFingerprint unnamedBeefFingerprint = KitchenPlanFingerprint.of(scan,
+                new KitchenInventorySnapshot(List.of(new ItemStack(Items.BEEF))));
+
+        KitchenPlanExecutionResult result = executor(inventory, station, scan).confirm(plan, unnamedBeefFingerprint);
 
         assertFalse(result.queued());
         assertTrue(result.blockers().contains(PlanningBlocker.KITCHEN_CHANGED));
@@ -251,8 +274,8 @@ class KitchenPlanExecutorTest {
         assertThrows(IllegalStateException.class, () -> executor(inventory, station, scan)
                 .confirm(plan, KitchenPlanFingerprint.of(scan, inventory.snapshot())));
 
-        assertTrue(source.getItem(0).isEmpty());
-        assertTrue(source.getItem(1).isEmpty());
+        assertEquals(0, inventory.count(new ItemStack(Items.BEEF)));
+        assertEquals(1, inventory.count(new ItemStack(Items.CHICKEN)));
         assertEquals(1, station.acceptedJobCount());
     }
 
