@@ -1,13 +1,15 @@
 # Mod Rename & Kitchen Utilities Specification
 
 Date: 2026-05-16
-Status: Draft
+Status: Rename complete; utilities still draft
 
 ## Part 1: Mod Rename — Delightful Kitchen
 
 > **Note:** The name "Delightful" is already taken by an existing Farmer's Delight addon mod. The new name is **Delightful Kitchen** to avoid conflict.
 
-This rename is the next roadmap milestone and should happen before new gameplay systems are added. The project has not had a public release, so the rename is allowed to be a breaking prototype-world change.
+The rename portion of this specification has been implemented. The Water Provider and Freezer portions remain future work.
+
+The project has not had a public release, so the rename is allowed to be a breaking prototype-world change.
 
 ### New Identity
 

@@ -6,7 +6,7 @@ Guidance for agents working in this repository.
 
 This is a NeoForge 1.21.1 Minecraft mod for a standalone Farmer's Delight focused kitchen.
 
-Current technical identity is still `cfb_delight`, but the next roadmap milestone is a breaking pre-release rename to:
+The current technical identity is:
 
 - Mod name: `Delightful Kitchen`
 - Mod id / namespace: `delightful_kitchen`
@@ -25,11 +25,11 @@ Core concepts:
 - `Cabinet of Holding` exposes the merged kitchen inventory.
 - `KitchenInventoryService` reads and routes items across discovered kitchen inventories.
 - Recipe planning is read-only until the player confirms a queue.
-- Stations should eventually expose standalone queue/capacity/output state instead of CfB processor APIs.
+- Stations should eventually expose standalone queue/capacity/output state instead of Cooking for Blockheads processor APIs.
 
 ## Roadmap Rules
 
-- Rename to Delightful Kitchen before starting new gameplay systems.
+- Keep the `delightful_kitchen` identity stable unless a roadmap plan explicitly changes it.
 - Build queue execution and standalone station interfaces before the full recipe book UI.
 - Build Water Provider and Freezer before the full recipe book UI.
 - Implement Food Pouch after the core kitchen loop and recipe book UI are usable.

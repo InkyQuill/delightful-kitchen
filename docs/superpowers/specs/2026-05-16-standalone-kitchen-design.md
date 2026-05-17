@@ -4,7 +4,7 @@ Date: 2026-05-16
 
 ## Purpose
 
-CfB-Delight will become a standalone Farmer's Delight focused kitchen mod. It should replace the Cooking for Blockheads style workflow with a room-based multiblock kitchen, a recipe planner that understands Farmer's Delight cooking chains, and kitchen-specific storage and automation.
+Delightful Kitchen is a standalone Farmer's Delight focused kitchen mod. It should replace the Cooking for Blockheads style workflow with a room-based multiblock kitchen, a recipe planner that understands Farmer's Delight cooking chains, and kitchen-specific storage and automation.
 
 The current Cooking for Blockheads integrations in the repository are prototype code. The standalone kitchen core should not depend on Cooking for Blockheads APIs for scanning, planning, storage, or execution.
 
@@ -28,7 +28,7 @@ The Curios pouch is documented as a later milestone and should not block the kit
 
 The kitchen is controlled through a Chef's Counter. A counter belongs to the connected Kitchen Floor component directly below it. If there is no Kitchen Floor below the counter, the counter has no active kitchen and should show a clear "missing kitchen floor" blocker.
 
-Kitchen Floor is always a real CfB-Delight block. Without customization, its top face uses a wooden parquet texture. Right-clicking the floor with a block copies that block's top appearance onto the Kitchen Floor top face only. The sides and bottom remain identifiable as Kitchen Floor. Using a Mop on a customized Kitchen Floor clears the copied appearance and restores the default parquet top.
+Kitchen Floor is always a real Delightful Kitchen block. Without customization, its top face uses a wooden parquet texture. Right-clicking the floor with a block copies that block's top appearance onto the Kitchen Floor top face only. The sides and bottom remain identifiable as Kitchen Floor. Using a Mop on a customized Kitchen Floor clears the copied appearance and restores the default parquet top.
 
 For every tile in the connected Kitchen Floor footprint, the kitchen scans blocks from one to six blocks above the floor tile. Compatible inventories, stations, fuel providers, container stores, and item-handler inventories in that volume are members of the kitchen. Walls, ceilings, doors, and enclosure detection do not affect membership.
 

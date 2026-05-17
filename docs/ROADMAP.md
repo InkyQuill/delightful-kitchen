@@ -8,19 +8,19 @@ Status: Canonical planning document
 
 Delightful Kitchen is a standalone Farmer's Delight focused kitchen mod. The project is still pre-release, so breaking prototype-world changes are acceptable when they simplify the long-term design.
 
-The current code still uses the `cfb_delight` mod id and package names. The next milestone is the rename to `delightful_kitchen`; new gameplay systems should wait until that rename is complete.
+The current code uses the `delightful_kitchen` mod id, resource namespace, and `net.inkyquill.delightfulkitchen` Java package. New gameplay systems should build on that identity.
 
 ## Milestone Order
 
-### 1. Rename To Delightful Kitchen
+### 1. Rename To Delightful Kitchen (Complete)
 
-Purpose: remove the temporary CfB-Delight identity before the project grows larger.
+Purpose: remove the temporary prototype identity before the project grows larger.
 
 Deliverables:
 
-- Rename mod id, resource namespace, lang keys, tags, recipes, loot tables, model paths, Java package, main mod class, creative tab, README references, and Gradle properties from `cfb_delight` / CfB-Delight to `delightful_kitchen` / Delightful Kitchen.
+- Rename mod id, resource namespace, lang keys, tags, recipes, loot tables, model paths, Java package, main mod class, creative tab, README references, and Gradle properties to `delightful_kitchen` / Delightful Kitchen.
 - Keep the project directory name unchanged unless handled manually outside the mod build.
-- Treat old `cfb_delight` worlds as prototype worlds. No migration alias or remapping layer is required before public release.
+- Treat pre-rename development worlds as prototype worlds. No migration alias or remapping layer is required before public release.
 
 Out of scope:
 
@@ -31,7 +31,7 @@ Verification:
 
 - `./gradlew test`
 - `./gradlew build`
-- A targeted grep shows no remaining accidental `cfb_delight` references except intentional compatibility notes or archived docs.
+- A targeted grep shows no remaining accidental pre-rename identity references except intentional compatibility notes or archived docs.
 
 ### 2. Queue Execution And Standalone Station Interfaces
 
@@ -179,7 +179,7 @@ Potential later work:
 
 ## Roadmap Rules
 
-- Do not start new gameplay systems before the rename.
+- Keep the `delightful_kitchen` identity stable unless a roadmap plan explicitly changes it.
 - Do not build the full recipe book UI until queue execution and utilities are stable.
 - Do not implement Food Pouch before the core kitchen loop and recipe book UI are usable.
 - Do not bundle Kitchen Cat with Milking Machine / Chicken Nest implementation.

@@ -4,7 +4,7 @@ The canonical roadmap lives in `docs/ROADMAP.md`. This file is historical scratc
 
 The approved standalone design lives in `docs/superpowers/specs/2026-05-16-standalone-kitchen-design.md`.
 
-Implementation is split into milestones. The first milestone builds Kitchen Floor scanning, Chef's Counter shell, and Cabinet of Holding as a merged kitchen inventory terminal. Full recipe planning and the Curios pouch are separate future milestones.
+The foundation and read-only recipe planning milestones are implemented. Current canonical milestone order lives in `docs/ROADMAP.md`.
 
 Блоки:
 
