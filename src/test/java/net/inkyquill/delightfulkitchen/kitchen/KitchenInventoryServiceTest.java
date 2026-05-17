@@ -81,4 +81,48 @@ class KitchenInventoryServiceTest {
         assertFalse(service.canInsertAll(List.of(new ItemStack(Items.BREAD), new ItemStack(Items.APPLE))));
         assertTrue(container.getItem(0).isEmpty());
     }
+
+    @Test
+    void canInsertAllPreservesEndpointPlacementRules() {
+        RejectAppleContainer container = new RejectAppleContainer(1);
+        KitchenInventoryService service = new KitchenInventoryService(List.of(
+                new KitchenInventoryEndpoint(BlockPos.ZERO, container)
+        ));
+
+        assertFalse(service.canInsertAll(List.of(new ItemStack(Items.APPLE))));
+        assertTrue(container.getItem(0).isEmpty());
+    }
+
+    @Test
+    void canInsertAllPreservesEndpointSlotLimits() {
+        MaxOneContainer container = new MaxOneContainer(1);
+        KitchenInventoryService service = new KitchenInventoryService(List.of(
+                new KitchenInventoryEndpoint(BlockPos.ZERO, container)
+        ));
+
+        assertFalse(service.canInsertAll(List.of(new ItemStack(Items.BREAD, 2))));
+        assertTrue(container.getItem(0).isEmpty());
+    }
+
+    private static final class RejectAppleContainer extends SimpleContainer {
+        RejectAppleContainer(int size) {
+            super(size);
+        }
+
+        @Override
+        public boolean canPlaceItem(int slot, ItemStack stack) {
+            return !stack.is(Items.APPLE);
+        }
+    }
+
+    private static final class MaxOneContainer extends SimpleContainer {
+        MaxOneContainer(int size) {
+            super(size);
+        }
+
+        @Override
+        public int getMaxStackSize(ItemStack stack) {
+            return 1;
+        }
+    }
 }

@@ -3,7 +3,6 @@ package net.inkyquill.delightfulkitchen.kitchen;
 import net.inkyquill.delightfulkitchen.kitchen.recipe.KitchenInventorySnapshot;
 import net.inkyquill.delightfulkitchen.kitchen.recipe.PlannedIngredient;
 import net.minecraft.core.NonNullList;
-import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 
@@ -119,9 +118,9 @@ public class KitchenInventoryService {
     }
 
     public boolean canInsertAll(List<ItemStack> stacks) {
-        KitchenInventoryService copy = new KitchenInventoryService(copyEndpoints());
+        List<SimulatedSlot> slots = simulatedSlots();
         for (ItemStack stack : stacks) {
-            if (!copy.insert(stack, false).isEmpty()) {
+            if (!simulateInsert(slots, stack).isEmpty()) {
                 return false;
             }
         }
@@ -137,16 +136,82 @@ public class KitchenInventoryService {
         return true;
     }
 
-    private List<KitchenInventoryEndpoint> copyEndpoints() {
-        List<KitchenInventoryEndpoint> copies = new ArrayList<>();
+    private List<SimulatedSlot> simulatedSlots() {
+        List<SimulatedSlot> slots = new ArrayList<>();
         for (KitchenInventoryEndpoint endpoint : endpoints) {
-            SimpleContainer container = new SimpleContainer(endpoint.size());
             for (int slot = 0; slot < endpoint.size(); slot++) {
-                container.setItem(slot, endpoint.get(slot).copy());
+                slots.add(new SimulatedSlot(endpoint, slot, endpoint.get(slot).copy()));
             }
-            copies.add(new KitchenInventoryEndpoint(endpoint.pos(), container));
         }
-        return copies;
+        return slots;
+    }
+
+    private ItemStack simulateInsert(List<SimulatedSlot> slots, ItemStack stack) {
+        if (stack.isEmpty()) {
+            return ItemStack.EMPTY;
+        }
+
+        ItemStack remainder = stack.copy();
+        remainder = simulateInsertIntoMatchingSlots(slots, remainder);
+        if (!remainder.isEmpty()) {
+            remainder = simulateInsertIntoEmptySlots(slots, remainder);
+        }
+        return remainder.isEmpty() ? ItemStack.EMPTY : remainder;
+    }
+
+    private ItemStack simulateInsertIntoMatchingSlots(List<SimulatedSlot> slots, ItemStack remainder) {
+        for (SimulatedSlot slot : slots) {
+            if (remainder.isEmpty()) {
+                break;
+            }
+            if (slot.stack.isEmpty()
+                    || !ItemStack.isSameItemSameComponents(slot.stack, remainder)
+                    || !slot.endpoint.mayPlace(slot.slot, remainder)) {
+                continue;
+            }
+
+            int transfer = Math.min(
+                    remainder.getCount(),
+                    slot.endpoint.getSlotLimit(slot.slot, slot.stack) - slot.stack.getCount()
+            );
+            if (transfer <= 0) {
+                continue;
+            }
+            slot.stack.grow(transfer);
+            remainder.shrink(transfer);
+        }
+        return remainder;
+    }
+
+    private ItemStack simulateInsertIntoEmptySlots(List<SimulatedSlot> slots, ItemStack remainder) {
+        for (SimulatedSlot slot : slots) {
+            if (remainder.isEmpty()) {
+                break;
+            }
+            if (!slot.stack.isEmpty() || !slot.endpoint.mayPlace(slot.slot, remainder)) {
+                continue;
+            }
+
+            int transfer = Math.min(remainder.getCount(), slot.endpoint.getSlotLimit(slot.slot, remainder));
+            if (transfer <= 0) {
+                continue;
+            }
+            slot.stack = remainder.copyWithCount(transfer);
+            remainder.shrink(transfer);
+        }
+        return remainder;
+    }
+
+    private static final class SimulatedSlot {
+        private final KitchenInventoryEndpoint endpoint;
+        private final int slot;
+        private ItemStack stack;
+
+        private SimulatedSlot(KitchenInventoryEndpoint endpoint, int slot, ItemStack stack) {
+            this.endpoint = endpoint;
+            this.slot = slot;
+            this.stack = stack;
+        }
     }
 
     public NonNullList<ItemStack> visibleStacks(int limit) {
