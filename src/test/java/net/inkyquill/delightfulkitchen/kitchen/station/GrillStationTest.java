@@ -86,7 +86,7 @@ class GrillStationTest {
         KitchenStationAcceptResult result = station.canAccept(job(KitchenStationType.GRILL));
         KitchenStationAcceptResult accepted = station.accept(job(KitchenStationType.GRILL));
 
-        assertEquals(List.of(PlanningBlocker.STATION_QUEUE_FULL), List.copyOf(result.blockers()));
+        assertEquals(List.of(PlanningBlocker.MISSING_FUEL), List.copyOf(result.blockers()));
         assertFalse(accepted.accepted());
         assertEquals(64, grill.getItem(GrillBlockEntity.SLOT_FUEL).getCount());
     }
@@ -97,8 +97,7 @@ class GrillStationTest {
         grill.setItem(GrillBlockEntity.SLOT_INPUT_START, new ItemStack(Items.BEEF));
         KitchenStation station = assertInstanceOf(KitchenStation.class, grill);
 
-        assertEquals(1, station.queuedJobCount());
-        assertEquals(GrillBlockEntity.GRILL_SLOTS - 1, station.queueCapacity() - station.queuedJobCount());
+        assertEquals(0, station.queuedJobCount());
 
         for (int i = 1; i < GrillBlockEntity.GRILL_SLOTS; i++) {
             KitchenStationAcceptResult accepted = station.accept(job(KitchenStationType.GRILL));
@@ -106,7 +105,7 @@ class GrillStationTest {
         }
         KitchenStationAcceptResult full = station.canAccept(job(KitchenStationType.GRILL));
 
-        assertEquals(GrillBlockEntity.GRILL_SLOTS, station.queuedJobCount());
+        assertEquals(GrillBlockEntity.GRILL_SLOTS - 1, station.queuedJobCount());
         assertEquals(List.of(PlanningBlocker.STATION_QUEUE_FULL), List.copyOf(full.blockers()));
     }
 
@@ -133,7 +132,7 @@ class GrillStationTest {
         assertEquals(1, loadedQueuedStation.queuedJobCount());
         assertEquals(KitchenStationStatus.RUNNING, loadedQueuedStation.stationStatus());
         assertArrayEquals(new int[]{1, 0, 0, 0, 0, 0}, queuedTag.getIntArray("QueuedSlots"));
-        assertEquals(1, loadedManualStation.queuedJobCount());
+        assertEquals(0, loadedManualStation.queuedJobCount());
         assertEquals(KitchenStationStatus.RUNNING, loadedManualStation.stationStatus());
     }
 

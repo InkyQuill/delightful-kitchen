@@ -66,7 +66,6 @@ public class PotStandBlockEntity extends BlockEntity
     private int burnTime      = 0;
     private int burnTimeTotal = 200;
     @Nullable private ItemStack pendingOutput = null;
-    @Nullable private KitchenStationJob activeJob = null;
     private boolean queuedJobActive = false;
     private boolean outputBlocked = false;
     @Nullable private Component customName    = null;
@@ -323,7 +322,6 @@ public class PotStandBlockEntity extends BlockEntity
             items.set(i, ItemStack.EMPTY);
         }
         items.set(SLOT_CONTAINER, ItemStack.EMPTY);
-        activeJob = null;
         queuedJobActive = false;
         outputBlocked = false;
         pendingOutput = null;
@@ -415,11 +413,11 @@ public class PotStandBlockEntity extends BlockEntity
         if (outputBlocked) {
             return KitchenStationStatus.OUTPUT_BLOCKED;
         }
+        if (queuedJobActive || cookTime > 0) {
+            return KitchenStationStatus.RUNNING;
+        }
         if (isQueueFull()) {
             return KitchenStationStatus.QUEUE_FULL;
-        }
-        if (cookTime > 0) {
-            return KitchenStationStatus.RUNNING;
         }
         return KitchenStationStatus.IDLE;
     }
@@ -432,9 +430,17 @@ public class PotStandBlockEntity extends BlockEntity
         if (outputBlocked) {
             return KitchenStationAcceptResult.blocked(PlanningBlocker.OUTPUT_STORAGE_FULL);
         }
-        if (isQueueFull() || hasManualInputOrContainer() || job.inputs().size() > INPUT_SLOTS
-                || !canStoreFuel(job) || !canStoreContainer(job)) {
+        if (job.inputs().size() > INPUT_SLOTS) {
+            return KitchenStationAcceptResult.blocked(PlanningBlocker.MISSING_STATION);
+        }
+        if (isQueueFull() || hasManualInputOrContainer()) {
             return KitchenStationAcceptResult.blocked(PlanningBlocker.STATION_QUEUE_FULL);
+        }
+        if (!canStoreFuel(job)) {
+            return KitchenStationAcceptResult.blocked(PlanningBlocker.MISSING_FUEL);
+        }
+        if (!canStoreContainer(job)) {
+            return KitchenStationAcceptResult.blocked(PlanningBlocker.MISSING_CONTAINER);
         }
         return KitchenStationAcceptResult.acceptedResult();
     }
@@ -453,7 +459,6 @@ public class PotStandBlockEntity extends BlockEntity
         job.servingContainer().ifPresent(container -> items.set(SLOT_CONTAINER, container.copy()));
         job.fuel().ifPresent(this::addFuel);
 
-        activeJob = job;
         queuedJobActive = true;
         outputBlocked = false;
         pendingOutput = job.outputs().getFirst().copy();
@@ -567,7 +572,6 @@ public class PotStandBlockEntity extends BlockEntity
         }
         items.replaceAll(ignored -> ItemStack.EMPTY);
         pendingOutput = null;
-        activeJob = null;
         queuedJobActive = false;
         outputBlocked = false;
     }
@@ -621,7 +625,6 @@ public class PotStandBlockEntity extends BlockEntity
         cookTimeTotal = tag.getInt("CookTimeTotal");
         burnTime = tag.getInt("BurnTime");
         burnTimeTotal = tag.getInt("BurnTimeTotal");
-        activeJob = null;
         queuedJobActive = false;
         outputBlocked = false;
         pendingOutput = null;

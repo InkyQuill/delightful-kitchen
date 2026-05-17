@@ -266,6 +266,8 @@ public final class KitchenPlanExecutor {
                 int recoverableMatchingCount = inventory.count(output) + heldMatchingCount(jobs, index + 1, output);
                 int generatedMatchingCount = generatedMatchingCount(jobs, index, output);
                 if (recoverableMatchingCount > generatedMatchingCount) {
+                    // Failing here preserves player items. Retrying this same executor after
+                    // this exception is not safe because ingredients and outputs may be mutated.
                     throw new IllegalStateException(
                             "Cannot safely rollback instant crafting output with pre-existing matching kitchen items"
                     );

@@ -228,6 +228,8 @@ public class KitchenInventoryService {
     }
 
     private int simulatedTransfer(SimulatedSlot slot, ItemStack remainder, ItemStack limitPrototype) {
+        // This simulation is only valid during a single server-thread validation pass. If an
+        // IItemHandler slot changes after the snapshot was copied, treat that slot as unavailable.
         if (slot.endpoint.usesItemHandler()
                 && !ItemStack.isSameItemSameComponents(slot.endpoint.get(slot.slot), slot.stack)) {
             return 0;

@@ -45,7 +45,7 @@ class PotStandStationTest {
         assertEquals(KitchenStationType.COOKING_POT, station.stationType());
         assertEquals(1, station.queueCapacity());
         assertEquals(1, station.queuedJobCount());
-        assertEquals(KitchenStationStatus.QUEUE_FULL, station.stationStatus());
+        assertEquals(KitchenStationStatus.RUNNING, station.stationStatus());
         assertEquals(Items.BEEF, potStand.getItem(0).getItem());
         assertEquals(Items.CARROT, potStand.getItem(1).getItem());
         assertEquals(Items.BOWL, potStand.getItem(PotStandBlockEntity.SLOT_CONTAINER).getItem());
@@ -54,7 +54,7 @@ class PotStandStationTest {
     }
 
     @Test
-    void blocksWrongStationTypeFullQueueBlockedOutputAndOverflowingFuel() {
+    void blocksWrongStationTypeFullQueueBlockedOutputOverflowingFuelTooManyInputsAndBadContainer() {
         PotStandBlockEntity potStand = newPotStand();
         KitchenStation station = assertInstanceOf(KitchenStation.class, potStand);
 
@@ -73,10 +73,20 @@ class PotStandStationTest {
         KitchenStation fullFuelStation = assertInstanceOf(KitchenStation.class, fullFuelPotStand);
         KitchenStationAcceptResult overflowingFuel = fullFuelStation.canAccept(job(KitchenStationType.COOKING_POT));
 
+        PotStandBlockEntity tooManyInputsPotStand = newPotStand();
+        KitchenStation tooManyInputsStation = assertInstanceOf(KitchenStation.class, tooManyInputsPotStand);
+        KitchenStationAcceptResult tooManyInputs = tooManyInputsStation.canAccept(tooManyInputsJob());
+
+        PotStandBlockEntity badContainerPotStand = newPotStand();
+        KitchenStation badContainerStation = assertInstanceOf(KitchenStation.class, badContainerPotStand);
+        KitchenStationAcceptResult badContainer = badContainerStation.canAccept(oversizedContainerJob());
+
         assertEquals(List.of(PlanningBlocker.MISSING_STATION), List.copyOf(wrongType.blockers()));
         assertEquals(List.of(PlanningBlocker.STATION_QUEUE_FULL), List.copyOf(full.blockers()));
         assertEquals(List.of(PlanningBlocker.OUTPUT_STORAGE_FULL), List.copyOf(blocked.blockers()));
-        assertEquals(List.of(PlanningBlocker.STATION_QUEUE_FULL), List.copyOf(overflowingFuel.blockers()));
+        assertEquals(List.of(PlanningBlocker.MISSING_FUEL), List.copyOf(overflowingFuel.blockers()));
+        assertEquals(List.of(PlanningBlocker.MISSING_STATION), List.copyOf(tooManyInputs.blockers()));
+        assertEquals(List.of(PlanningBlocker.MISSING_CONTAINER), List.copyOf(badContainer.blockers()));
         assertEquals(KitchenStationStatus.OUTPUT_BLOCKED, blockedStation.stationStatus());
     }
 
@@ -102,9 +112,9 @@ class PotStandStationTest {
 
         assertTrue(queuedTag.getBoolean("QueuedJobActive"));
         assertEquals(1, loadedQueuedStation.queuedJobCount());
-        assertEquals(KitchenStationStatus.QUEUE_FULL, loadedQueuedStation.stationStatus());
+        assertEquals(KitchenStationStatus.RUNNING, loadedQueuedStation.stationStatus());
         assertEquals(0, loadedManualStation.queuedJobCount());
-        assertEquals(KitchenStationStatus.QUEUE_FULL, loadedManualStation.stationStatus());
+        assertEquals(KitchenStationStatus.RUNNING, loadedManualStation.stationStatus());
         assertEquals(List.of(PlanningBlocker.STATION_QUEUE_FULL),
                 List.copyOf(loadedManualStation.canAccept(job(KitchenStationType.COOKING_POT)).blockers()));
     }
@@ -215,6 +225,38 @@ class PotStandStationTest {
                 List.of(new ItemStack(Items.BEEF), new ItemStack(Items.CARROT)),
                 List.of(new ItemStack(Items.STICK, 3)),
                 Optional.of(new ItemStack(Items.BOWL)),
+                Optional.of(new ItemStack(Items.COAL, 2)),
+                20
+        );
+    }
+
+    private static KitchenStationJob tooManyInputsJob() {
+        return new KitchenStationJob(
+                ResourceLocation.fromNamespaceAndPath("delightful_kitchen", "pot_stand_too_many_inputs_test"),
+                KitchenStationType.COOKING_POT,
+                List.of(
+                        new ItemStack(Items.BEEF),
+                        new ItemStack(Items.CARROT),
+                        new ItemStack(Items.POTATO),
+                        new ItemStack(Items.BEETROOT),
+                        new ItemStack(Items.WHEAT),
+                        new ItemStack(Items.EGG),
+                        new ItemStack(Items.SUGAR)
+                ),
+                List.of(new ItemStack(Items.MUSHROOM_STEW)),
+                Optional.of(new ItemStack(Items.BOWL)),
+                Optional.of(new ItemStack(Items.COAL, 2)),
+                20
+        );
+    }
+
+    private static KitchenStationJob oversizedContainerJob() {
+        return new KitchenStationJob(
+                ResourceLocation.fromNamespaceAndPath("delightful_kitchen", "pot_stand_oversized_container_test"),
+                KitchenStationType.COOKING_POT,
+                List.of(new ItemStack(Items.BEEF), new ItemStack(Items.CARROT)),
+                List.of(new ItemStack(Items.MUSHROOM_STEW)),
+                Optional.of(new ItemStack(Items.BOWL, 65)),
                 Optional.of(new ItemStack(Items.COAL, 2)),
                 20
         );

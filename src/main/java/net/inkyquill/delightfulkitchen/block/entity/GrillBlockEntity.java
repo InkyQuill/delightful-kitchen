@@ -64,7 +64,6 @@ public class GrillBlockEntity extends BlockEntity
     private final int[]       cookTimes    = new int[GRILL_SLOTS];
     private final int[]       cookTotals   = new int[GRILL_SLOTS];
     private final ItemStack[] pending      = new ItemStack[GRILL_SLOTS];
-    private final KitchenStationJob[] queuedJobs = new KitchenStationJob[GRILL_SLOTS];
     private final boolean[] queuedSlots = new boolean[GRILL_SLOTS];
     private final boolean[] outputBlocked = new boolean[GRILL_SLOTS];
     private int burnTime = 0;
@@ -205,7 +204,6 @@ public class GrillBlockEntity extends BlockEntity
 
     void finishQueuedSlotWithRemainder(int i, ItemStack remainder) {
         if (remainder.isEmpty()) {
-            queuedJobs[i] = null;
             queuedSlots[i] = false;
             pending[i] = null;
             outputBlocked[i] = false;
@@ -303,7 +301,7 @@ public class GrillBlockEntity extends BlockEntity
     public int queuedJobCount() {
         int count = 0;
         for (int i = 0; i < GRILL_SLOTS; i++) {
-            if (isQueuedSlot(i) || pending[i] != null || !items.get(SLOT_INPUT_START + i).isEmpty()) {
+            if (isQueuedSlot(i)) {
                 count++;
             }
         }
@@ -336,7 +334,7 @@ public class GrillBlockEntity extends BlockEntity
             return KitchenStationAcceptResult.blocked(PlanningBlocker.STATION_QUEUE_FULL);
         }
         if (!canStoreFuel(job)) {
-            return KitchenStationAcceptResult.blocked(PlanningBlocker.STATION_QUEUE_FULL);
+            return KitchenStationAcceptResult.blocked(PlanningBlocker.MISSING_FUEL);
         }
         return KitchenStationAcceptResult.acceptedResult();
     }
@@ -353,7 +351,6 @@ public class GrillBlockEntity extends BlockEntity
             return KitchenStationAcceptResult.blocked(PlanningBlocker.STATION_QUEUE_FULL);
         }
 
-        queuedJobs[slot] = job;
         queuedSlots[slot] = true;
         pending[slot] = job.outputs().getFirst().copy();
         outputBlocked[slot] = false;
@@ -397,7 +394,7 @@ public class GrillBlockEntity extends BlockEntity
     }
 
     private boolean isQueuedSlot(int slot) {
-        return queuedJobs[slot] != null || queuedSlots[slot];
+        return queuedSlots[slot];
     }
 
     private void addFuel(ItemStack fuel) {
@@ -478,7 +475,6 @@ public class GrillBlockEntity extends BlockEntity
         }
         items.replaceAll(ignored -> ItemStack.EMPTY);
         Arrays.fill(pending, null);
-        Arrays.fill(queuedJobs, null);
         Arrays.fill(queuedSlots, false);
         Arrays.fill(outputBlocked, false);
     }
@@ -510,7 +506,6 @@ public class GrillBlockEntity extends BlockEntity
         super.loadAdditional(tag, registries);
         ContainerHelper.loadAllItems(tag, items, registries);
         Arrays.fill(pending, null);
-        Arrays.fill(queuedJobs, null);
         Arrays.fill(queuedSlots, false);
         Arrays.fill(outputBlocked, false);
         int[] ct = tag.getIntArray("CookTimes"),  tot = tag.getIntArray("CookTotals");
