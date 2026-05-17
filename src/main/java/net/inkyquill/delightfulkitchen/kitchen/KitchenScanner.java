@@ -73,7 +73,8 @@ public final class KitchenScanner {
     }
 
     public static boolean isKitchenStation(@Nullable BlockEntity blockEntity) {
-        return blockEntity instanceof AutoCutterBlockEntity
+        return blockEntity instanceof KitchenStation
+                || blockEntity instanceof AutoCutterBlockEntity
                 || blockEntity instanceof GrillBlockEntity
                 || blockEntity instanceof PotStandBlockEntity;
     }

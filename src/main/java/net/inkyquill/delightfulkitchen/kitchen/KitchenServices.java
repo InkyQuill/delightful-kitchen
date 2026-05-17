@@ -61,7 +61,9 @@ public final class KitchenServices {
         EnumSet<KitchenStationType> stationTypes = EnumSet.of(KitchenStationType.CRAFTING);
         for (BlockPos member : scan.memberBlocks()) {
             BlockEntity blockEntity = level.getBlockEntity(member);
-            if (blockEntity instanceof AutoCutterBlockEntity) {
+            if (blockEntity instanceof KitchenStation station) {
+                stationTypes.add(station.stationType());
+            } else if (blockEntity instanceof AutoCutterBlockEntity) {
                 stationTypes.add(KitchenStationType.CUTTING_BOARD);
             } else if (blockEntity instanceof PotStandBlockEntity) {
                 stationTypes.add(KitchenStationType.COOKING_POT);
