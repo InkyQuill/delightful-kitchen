@@ -56,7 +56,14 @@ public final class RecipePlanner {
     public RecipePlan plan(PlannedRecipe target, KitchenInventorySnapshot snapshot) {
         Objects.requireNonNull(target, "target");
         Objects.requireNonNull(snapshot, "snapshot");
-        return plan(target, snapshot, 0, Set.of()).toRecipePlan();
+        return planWithResult(target, snapshot).plan();
+    }
+
+    public RecipePlanningResult planWithResult(PlannedRecipe target, KitchenInventorySnapshot snapshot) {
+        Objects.requireNonNull(target, "target");
+        Objects.requireNonNull(snapshot, "snapshot");
+        PlanAttempt attempt = plan(target, snapshot, 0, Set.of());
+        return new RecipePlanningResult(attempt.toRecipePlan(), attempt.snapshot(), attempt.snapshotBeforeOutput());
     }
 
     private PlanAttempt plan(PlannedRecipe target, KitchenInventorySnapshot snapshot, int depth, Set<String> visiting) {
@@ -105,6 +112,7 @@ public final class RecipePlanner {
                 return IntermediateAttempt.success(new PlanAttempt(
                         target,
                         completed.withAdded(target.outputs()),
+                        completed,
                         usedIntermediate ? PlanState.CRAFTABLE_WITH_INTERMEDIATES : PlanState.READY,
                         completedSteps,
                         EnumSet.noneOf(PlanningBlocker.class)
@@ -312,10 +320,12 @@ public final class RecipePlanner {
         }
 
         KitchenInventorySnapshot completed = reserved.withConsumed(matchesWithoutUtility.orElseThrow());
+        KitchenInventorySnapshot beforeOutput = completed.withAdded(containerMatch.orElseThrow());
         List<PlannedRecipe> completedSteps = appendStep(steps, utilityStep);
         return Optional.of(new PlanAttempt(
                 target,
-                completed.withAdded(target.outputs()),
+                beforeOutput.withAdded(target.outputs()),
+                beforeOutput,
                 usedIntermediate ? PlanState.CRAFTABLE_WITH_INTERMEDIATES : PlanState.READY,
                 completedSteps,
                 EnumSet.noneOf(PlanningBlocker.class)
@@ -463,6 +473,7 @@ public final class RecipePlanner {
     private record PlanAttempt(
             PlannedRecipe target,
             KitchenInventorySnapshot snapshot,
+            KitchenInventorySnapshot snapshotBeforeOutput,
             PlanState state,
             List<PlannedRecipe> steps,
             EnumSet<PlanningBlocker> blockers
@@ -470,19 +481,20 @@ public final class RecipePlanner {
         private PlanAttempt {
             target = Objects.requireNonNull(target, "target");
             snapshot = Objects.requireNonNull(snapshot, "snapshot");
+            snapshotBeforeOutput = Objects.requireNonNull(snapshotBeforeOutput, "snapshotBeforeOutput");
             state = Objects.requireNonNull(state, "state");
             steps = List.copyOf(Objects.requireNonNull(steps, "steps"));
             blockers = Objects.requireNonNull(blockers, "blockers").clone();
         }
 
         private static PlanAttempt ready(PlannedRecipe target, KitchenInventorySnapshot snapshot) {
-            return new PlanAttempt(target, snapshot.withAdded(target.outputs()), PlanState.READY, List.of(target),
+            return new PlanAttempt(target, snapshot.withAdded(target.outputs()), snapshot, PlanState.READY, List.of(target),
                     EnumSet.noneOf(PlanningBlocker.class));
         }
 
         private static PlanAttempt blocked(PlannedRecipe target, KitchenInventorySnapshot snapshot,
                                            List<PlannedRecipe> steps, EnumSet<PlanningBlocker> blockers) {
-            return new PlanAttempt(target, snapshot, PlanState.BLOCKED, steps, blockers);
+            return new PlanAttempt(target, snapshot, snapshot, PlanState.BLOCKED, steps, blockers);
         }
 
         private RecipePlan toRecipePlan() {
@@ -550,6 +562,18 @@ public final class RecipePlanner {
 
         private static UtilityIngredientAnalysis multipleUtilityIngredients() {
             return new UtilityIngredientAnalysis(Optional.empty(), true);
+        }
+    }
+
+    public record RecipePlanningResult(
+            RecipePlan plan,
+            KitchenInventorySnapshot snapshotAfterPlan,
+            KitchenInventorySnapshot snapshotBeforeOutput
+    ) {
+        public RecipePlanningResult {
+            plan = Objects.requireNonNull(plan, "plan");
+            snapshotAfterPlan = Objects.requireNonNull(snapshotAfterPlan, "snapshotAfterPlan");
+            snapshotBeforeOutput = Objects.requireNonNull(snapshotBeforeOutput, "snapshotBeforeOutput");
         }
     }
 }

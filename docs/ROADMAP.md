@@ -84,7 +84,7 @@ Verification:
 - Tests for container reservation and release.
 - Game tests for water/ice/snow recipe blockers and Freezer passive production.
 
-### 4. Chef's Counter Recipe Book UI And Details Panel
+### 4. Chef's Counter Recipe Book UI And Details Panel (Complete)
 
 Purpose: expose the planner as a player-friendly recipe browser and guided automation UI.
 
@@ -96,17 +96,20 @@ Deliverables:
 - Confirm/queue button for executable plans.
 - Status display for queued/running/completed/blocked jobs.
 
+Implemented recipe book browsing with search and craftability filters, selected-plan details, batch quantity planning, guarded client/server sync, queue confirmation, blocker display, and generic queued/blocked confirmation feedback. Live per-station running/completed job history remains station-local for now.
+
 Out of scope:
 
 - Alternate recipe path selection beyond the deterministic best path.
 - JEI/REI deep integration beyond existing compatibility work.
+- Persistent live job ids in Chef's Counter after queueing.
 
 Verification:
 
 - Menu sync tests where practical.
 - Client smoke test for layout, filtering, and queue confirmation.
 
-### 5. Food Pouch
+### 5. Food Pouch - implemented
 
 Purpose: add a Curios-compatible wearable food inventory with smart auto-feeding.
 
@@ -118,6 +121,13 @@ Deliverables:
 - Pouch UI and feeding settings.
 - Auto-feeding with threshold settings, health override, cooldowns, and container return.
 
+Implementation notes:
+
+- Curios is now a required dependency from this milestone onward.
+- Pouch contents use a custom `delightful_kitchen:pouch_inventory` data component so Advanced and Ultimate pouches can preserve counts above vanilla's normal item-stack codec limit.
+- Equipped pouch opening uses a default-unbound client keybind and a server-validated open payload.
+- Basic pouch uses the shown pouch-shape recipe: eight leather around one string.
+
 Out of scope:
 
 - Kitchen planner integration.
@@ -125,8 +135,8 @@ Out of scope:
 
 Verification:
 
-- Focused tests for pouch inventory limits, feeding decisions, and container return.
-- Game tests for Curios equip/tick behavior and UI.
+- Focused tests cover pouch inventory limits, large-count serialization, insertion/extraction, and menu layout.
+- Manual game smoke should still cover Curios equip/tick behavior, keybind opening, auto-feeding, and container return.
 
 ### 6. Animal Production Stations
 

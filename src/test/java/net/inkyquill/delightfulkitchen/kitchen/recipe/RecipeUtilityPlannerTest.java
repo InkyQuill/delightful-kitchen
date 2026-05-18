@@ -110,7 +110,7 @@ class RecipeUtilityPlannerTest {
     }
 
     @Test
-    void utilityBackedIntermediateReservesContainerForLaterUtilityStep() {
+    void utilityBackedIntermediateReleasesContainerForLaterUtilityStep() {
         PlannedRecipe dough = recipe("dough", Items.WATER_BUCKET, Items.BREAD);
         PlannedRecipe packedLunch = new PlannedRecipe(
                 ResourceLocation.fromNamespaceAndPath("delightful_kitchen", "packed_lunch"),
@@ -132,8 +132,11 @@ class RecipeUtilityPlannerTest {
 
         RecipePlan plan = planner.plan(packedLunch, inventory.snapshot());
 
-        assertEquals(PlanState.BLOCKED, plan.state());
-        assertTrue(plan.blockers().contains(PlanningBlocker.MISSING_WATER_CONTAINER));
+        assertEquals(PlanState.CRAFTABLE_WITH_INTERMEDIATES, plan.state());
+        assertTrue(plan.blockers().isEmpty());
+        assertEquals(List.of(dough.id(), packedLunch.id()), plan.steps().stream().map(PlannedRecipe::id).toList());
+        assertEquals(KitchenUtilityRequirement.WATER, plan.steps().getFirst().utilityRequirement());
+        assertEquals(KitchenUtilityRequirement.WATER, plan.steps().get(1).utilityRequirement());
     }
 
     @Test

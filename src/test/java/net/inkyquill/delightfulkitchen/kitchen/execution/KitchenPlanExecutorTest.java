@@ -230,6 +230,29 @@ class KitchenPlanExecutorTest {
     }
 
     @Test
+    void rejectsBatchInstantCraftingWhenCombinedOutputsDoNotFit() {
+        FilteredSimpleContainer source = new FilteredSimpleContainer(
+                new ItemStack(Items.WHEAT, 6),
+                new ItemStack(Items.BREAD, 63)
+        );
+        FakeStation station = new FakeStation(KitchenStationType.GRILL, 1, 0);
+        KitchenInventoryService inventory = inventory(source);
+        KitchenScanResult scan = scan();
+        PlannedRecipe bread = recipe("bread", KitchenStationType.CRAFTING,
+                List.of(ingredient(Items.WHEAT, 3)), List.of(new ItemStack(Items.BREAD)));
+        RecipePlan plan = plan(bread, bread);
+
+        KitchenPlanExecutionResult result = executor(inventory, station, scan)
+                .confirm(plan, KitchenPlanFingerprint.of(scan, inventory.snapshot()));
+
+        assertFalse(result.queued());
+        assertTrue(result.blockers().contains(PlanningBlocker.OUTPUT_STORAGE_FULL));
+        assertEquals(6, source.getItem(0).getCount());
+        assertEquals(63, source.getItem(1).getCount());
+        assertEquals(0, station.acceptedJobCount());
+    }
+
+    @Test
     void throwsWhenInstantCraftingRollbackWouldBeAmbiguous() {
         SimpleContainer source = new SimpleContainer(
                 new ItemStack(Items.WHEAT, 3),

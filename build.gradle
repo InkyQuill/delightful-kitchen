@@ -31,6 +31,10 @@ repositories {
         name = "TwelveIterations"
         url = "https://maven.twelveiterations.com/repository/maven-public/"
     }
+    maven {
+        name = "TheIllusiveC4"
+        url = "https://maven.theillusivec4.top/"
+    }
 }
 
 base {
@@ -121,6 +125,11 @@ dependencies {
     localRuntime files("../FarmersDelight/build/libs/FarmersDelight-${minecraft_version}-${fd_version}.jar")
     testImplementation files("../FarmersDelight/build/libs/FarmersDelight-${minecraft_version}-${fd_version}.jar")
 
+    // Curios for the wearable food pouch slot.
+    compileOnly "top.theillusivec4.curios:curios-neoforge:${curios_version}:api"
+    localRuntime "top.theillusivec4.curios:curios-neoforge:${curios_version}"
+    testImplementation "top.theillusivec4.curios:curios-neoforge:${curios_version}:api"
+
     // Just Enough Items (optional) - built locally from ../JustEnoughItems
     compileOnly files("../JustEnoughItems/NeoForge/build/libs/jei-1.21.1-neoforge-19.27.0.9999.jar")
     localRuntime files("../JustEnoughItems/NeoForge/build/libs/jei-1.21.1-neoforge-19.27.0.9999.jar")
@@ -155,6 +164,7 @@ tasks.withType(ProcessResources).configureEach {
             mod_name               : mod_name,
             mod_license            : mod_license,
             mod_version            : mod_version,
+            curios_version          : curios_version,
     ]
     inputs.properties replaceProperties
 

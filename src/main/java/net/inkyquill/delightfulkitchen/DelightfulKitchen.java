@@ -3,8 +3,10 @@ package net.inkyquill.delightfulkitchen;
 import com.mojang.logging.LogUtils;
 import net.inkyquill.delightfulkitchen.block.ModBlocks;
 import net.inkyquill.delightfulkitchen.block.entity.ModBlockEntities;
+import net.inkyquill.delightfulkitchen.component.ModDataComponents;
 import net.inkyquill.delightfulkitchen.item.ModItems;
 import net.inkyquill.delightfulkitchen.menu.ModMenuTypes;
+import net.inkyquill.delightfulkitchen.network.ModPayloads;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
@@ -20,8 +22,10 @@ public class DelightfulKitchen {
         ModBlocks.BLOCKS.register(modEventBus);
         ModItems.ITEMS.register(modEventBus);
         ModItems.CREATIVE_TABS.register(modEventBus);
+        ModDataComponents.DATA_COMPONENT_TYPES.register(modEventBus);
         ModBlockEntities.BLOCK_ENTITIES.register(modEventBus);
         ModMenuTypes.MENUS.register(modEventBus);
+        modEventBus.addListener(ModPayloads::register);
     }
 
     public static ResourceLocation id(String path) {

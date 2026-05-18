@@ -30,7 +30,7 @@ Not included in this milestone:
 - Pouch-to-kitchen item routing.
 - Curios slot upgrade/expansion via additional items (the tier IS the upgrade).
 
-Curios is a required dependency for the Food Pouch milestone only. Earlier kitchen milestones should not depend on Curios.
+Curios is a required dependency from the Food Pouch milestone onward. Earlier kitchen milestones did not depend on Curios.
 
 ## Tiers
 
@@ -202,6 +202,7 @@ The following data is persisted as NeoForge `DataComponentType` entries on the p
 | `delightful_kitchen:pouch_inventory` | Custom codec-backed pouch inventory value | empty | The pouch's item contents, including tier-sized slot list and large stack counts. |
 | `delightful_kitchen:feed_at_hunger_level` | `String` | `"half"` | `any`, `half`, or `full`. |
 | `delightful_kitchen:feed_when_hurt` | `boolean` | `true` | Whether health damage bypasses the hunger threshold. |
+| `delightful_kitchen:pouch_feed_cooldown` | `int` | `0` | Internal equipped auto-feeding cooldown in ticks. |
 
 Inventory size and per-slot stack limits are NOT stored as data components — they derive from the tier, which is determined by which item type the stack is (`food_pouch`, `advanced_food_pouch`, or `ultimate_food_pouch`).
 
@@ -239,7 +240,7 @@ No food filter UI is needed.
 
 | Tier | Recipe |
 |------|--------|
-| Basic | Leather × 6 + String × 2 in a pouch shape: `L L L` / `L S L` / `L L L` |
+| Basic | Leather × 8 + String × 1 in a pouch shape: `L L L` / `L S L` / `L L L` |
 | Advanced | Basic Food Pouch + Diamond + Gold Ingot × 4 (shapeless; result is empty) |
 | Ultimate | Advanced Food Pouch + Netherite Ingot + Ender Chest (shapeless; result is empty) |
 
@@ -325,7 +326,7 @@ Deferred to future milestones:
 
 ## Implementation Notes
 
-- The pouch item class implements the Curios API tick interface (`ICurioItem` or equivalent for 1.21.1 NeoForge Curios) so it receives tick callbacks while equipped.
+- The pouch item class implements the Curios API tick interface (`ICurioItem` in Curios NeoForge `9.5.1+1.21.1`) so it receives tick callbacks while equipped.
 - The Curios slot is registered via the Curios datapack system (`data/curios/curios/slots/delightful_kitchen.json` for the slot icon, `data/curios/tags/item/pouch.json` for which items go into the slot, `data/curios/curios/entities/player.json` for entity slot assignment).
 - Data components use NeoForge's `DataComponentType` registration with codec-based serialization. Inventory uses a custom codec-backed component rather than vanilla `ItemContainerContents` so large stack counts and tier slot counts are preserved. Custom components register for feeding settings.
 - Container return uses the `InventoryHelper.insertOrDropItem` utility already present in the project.

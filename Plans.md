@@ -4,7 +4,7 @@ The canonical roadmap lives in `docs/ROADMAP.md`. This file is historical scratc
 
 The approved standalone design lives in `docs/superpowers/specs/2026-05-16-standalone-kitchen-design.md`.
 
-The foundation and read-only recipe planning milestones are implemented. Current canonical milestone order lives in `docs/ROADMAP.md`.
+The standalone foundation, station queue execution, kitchen utilities, Chef's Counter recipe book UI, and Food Pouch milestones are implemented. Current canonical milestone order lives in `docs/ROADMAP.md`.
 
 Блоки:
 
@@ -43,9 +43,7 @@ Fuel Provider - автоматически передаёт топливо в л
 
 ## Next Milestones
 
-- Chef's Counter recipe book UI and details panel.
-- Confirmation and station queue execution.
-- Capacity-aware station planning for busy queues and blocked outputs.
-- Standalone station interfaces and removal of Cooking for Blockheads APIs.
+- Animal production stations.
+- Kitchen Cat.
 - Persistent Kitchen Floor camouflage.
-- Curios pouch.
+- Public third-party recipe adapter and station registration API.

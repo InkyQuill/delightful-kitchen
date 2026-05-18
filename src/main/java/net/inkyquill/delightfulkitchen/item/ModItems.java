@@ -2,6 +2,7 @@ package net.inkyquill.delightfulkitchen.item;
 
 import net.inkyquill.delightfulkitchen.DelightfulKitchen;
 import net.inkyquill.delightfulkitchen.block.ModBlocks;
+import net.inkyquill.delightfulkitchen.pouch.FoodPouchTier;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.BlockItem;
@@ -33,6 +34,13 @@ public class ModItems {
     public static final DeferredItem<MopItem> MOP = ITEMS.register("mop",
             () -> new MopItem(new Item.Properties().stacksTo(1)));
 
+    public static final DeferredItem<FoodPouchItem> FOOD_POUCH = ITEMS.register("food_pouch",
+            () -> new FoodPouchItem(FoodPouchTier.BASIC, new Item.Properties().stacksTo(1)));
+    public static final DeferredItem<FoodPouchItem> ADVANCED_FOOD_POUCH = ITEMS.register("advanced_food_pouch",
+            () -> new FoodPouchItem(FoodPouchTier.ADVANCED, new Item.Properties().stacksTo(1)));
+    public static final DeferredItem<FoodPouchItem> ULTIMATE_FOOD_POUCH = ITEMS.register("ultimate_food_pouch",
+            () -> new FoodPouchItem(FoodPouchTier.ULTIMATE, new Item.Properties().stacksTo(1)));
+
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> CFB_DELIGHT_TAB =
             CREATIVE_TABS.register("delightful_kitchen", () -> CreativeModeTab.builder()
                     .title(Component.translatable("itemGroup.delightful_kitchen"))
@@ -49,6 +57,9 @@ public class ModItems {
                         output.accept(FREEZER.get());
                         output.accept(KITCHEN_FLOOR.get());
                         output.accept(MOP.get());
+                        output.accept(FOOD_POUCH.get());
+                        output.accept(ADVANCED_FOOD_POUCH.get());
+                        output.accept(ULTIMATE_FOOD_POUCH.get());
                     })
                     .build());
 }

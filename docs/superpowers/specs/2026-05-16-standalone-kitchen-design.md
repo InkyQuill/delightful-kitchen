@@ -155,6 +155,8 @@ The details panel shows:
 
 The UI should be guided batch automation. It should show the plan before queueing, then enqueue intermediate steps before final steps after confirmation.
 
+Milestone 4 implements immediate confirmation feedback in Chef's Counter: queued, blocked, and kitchen-changed results are shown after server confirmation, and the recipe list/details refresh from the authoritative server state. Detailed live running/completed station job history remains local to station screens until persistent job ids are added.
+
 ## Cabinet of Holding UI
 
 Cabinet of Holding is the merged kitchen storage UI. It should feel like one inventory for the whole kitchen.

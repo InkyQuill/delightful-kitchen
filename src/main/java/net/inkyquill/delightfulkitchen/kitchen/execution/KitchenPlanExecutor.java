@@ -112,17 +112,22 @@ public final class KitchenPlanExecutor {
         EnumSet<PlanningBlocker> blockers = EnumSet.noneOf(PlanningBlocker.class);
         List<KitchenStationJob> stationJobs = new ArrayList<>();
         List<ItemStack> futureStationOutputs = new ArrayList<>();
+        List<ItemStack> instantCraftingOutputs = new ArrayList<>();
         for (PlannedRecipe step : plan.steps()) {
             if (step.stationType() == KitchenStationType.CRAFTING) {
                 if (!inventory.canInsertAll(step.outputs())) {
                     blockers.add(PlanningBlocker.OUTPUT_STORAGE_FULL);
                 }
+                instantCraftingOutputs.addAll(step.outputs());
             } else if (step.utilityRequirement() != KitchenUtilityRequirement.NONE) {
                 blockers.add(PlanningBlocker.MISSING_RAW_INGREDIENT);
             } else {
                 stationJobs.add(jobWithoutExtractedInputs(step));
                 futureStationOutputs.addAll(step.outputs());
             }
+        }
+        if (!instantCraftingOutputs.isEmpty() && !inventory.canInsertAll(instantCraftingOutputs)) {
+            blockers.add(PlanningBlocker.OUTPUT_STORAGE_FULL);
         }
         if (!futureStationOutputs.isEmpty() && !inventory.canInsertAll(futureStationOutputs)) {
             blockers.add(PlanningBlocker.OUTPUT_STORAGE_FULL);

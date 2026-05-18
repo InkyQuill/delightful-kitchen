@@ -41,6 +41,13 @@ Counter, and automate Farmer's Delight preparation through kitchen stations.
     side="BOTH"
 
 [[dependencies.${mod_id}]]
+    modId="curios"
+    type="required"
+    versionRange="[9.5.1,10)"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.${mod_id}]]
     modId="jei"
     type="optional"
     versionRange="[19.0,)"
