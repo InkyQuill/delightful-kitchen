@@ -1,0 +1,4 @@
+/home/inky/.claude/plugins/cache/claude-plugins-official/remember/0.1.0/scripts/save-session.sh: строка 135: cd: /home/inky/.claude/plugins/cache/claude-plugins-official/.claude/remember: Нет такого файла или каталога
+/home/inky/.claude/plugins/cache/claude-plugins-official/remember/0.1.0/scripts/save-session.sh: строка 140: [: : integer expected
+/home/inky/.claude/plugins/cache/claude-plugins-official/remember/0.1.0/scripts/save-session.sh: строка 142: [: : integer expected
+/home/inky/.claude/plugins/cache/claude-plugins-official/remember/0.1.0/scripts/save-session.sh: строка 164: cd: /home/inky/.claude/plugins/cache/claude-plugins-official/.claude/remember: Нет такого файла или каталога
