@@ -12,8 +12,10 @@ import net.inkyquill.delightfulkitchen.menu.chef.ChefRecipeFilter;
 import net.inkyquill.delightfulkitchen.menu.chef.ChefRecipeSummary;
 import net.inkyquill.delightfulkitchen.network.ModPayloads;
 import net.inkyquill.delightfulkitchen.network.payload.ServerboundChefCounterConfirmPayload;
+import net.inkyquill.delightfulkitchen.network.payload.ServerboundChefCounterPinPayload;
 import net.inkyquill.delightfulkitchen.network.payload.ServerboundChefCounterSelectPayload;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
@@ -44,6 +46,7 @@ public class ChefCounterScreen extends AbstractContainerScreen<ChefCounterMenu> 
     private EditBox searchBox;
     private ChefRecipeGrid recipeGrid;
     private ChefPlanDetailsPanel detailsPanel;
+    private Button pinButton;
     private ChefRecipeFilter selectedFilter = ChefRecipeFilter.ALL;
     private int selectedRecipeIndex = -1;
     private int requestedQuantity = 1;
@@ -94,6 +97,11 @@ public class ChefCounterScreen extends AbstractContainerScreen<ChefCounterMenu> 
                 this::confirmSelection);
         addRenderableWidget(detailsPanel);
 
+        pinButton = Button.builder(pinButtonLabel(), button -> togglePin())
+                .bounds(leftPos + 292, topPos + 19, 48, 16)
+                .build();
+        addRenderableWidget(pinButton);
+
         addRenderableWidget(new ChefQuantityControl(leftPos + 286, topPos + 71, 54, 18,
                 this::currentQuantity, this::selectQuantity));
     }
@@ -119,6 +127,7 @@ public class ChefCounterScreen extends AbstractContainerScreen<ChefCounterMenu> 
     protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
         pollServerResponses();
         syncLocalSelectionFromDetails();
+        updatePinButton();
         graphics.drawString(font, title, titleLabelX, titleLabelY, TEXT_COLOR, false);
         graphics.drawString(font, RECIPES_LABEL, 145, 43, TEXT_COLOR, false);
         renderKitchenStatus(graphics);
@@ -222,6 +231,14 @@ public class ChefCounterScreen extends AbstractContainerScreen<ChefCounterMenu> 
                 selectedDetails.selectedIndex(), selectedDetails.quantity(), selectedDetails.fingerprint()));
     }
 
+    private void togglePin() {
+        if (selectedRecipeId == null) {
+            return;
+        }
+        boolean pin = !menu.clientState().isPinned(selectedRecipeId);
+        ModPayloads.sendToServer(new ServerboundChefCounterPinPayload(menu.containerId, selectedRecipeId, pin));
+    }
+
     private int currentQuantity() {
         return requestedQuantity;
     }
@@ -281,6 +298,7 @@ public class ChefCounterScreen extends AbstractContainerScreen<ChefCounterMenu> 
     }
 
     private void pollServerResponses() {
+        updatePinButton();
         if (!awaitingConfirm) {
             return;
         }
@@ -296,6 +314,7 @@ public class ChefCounterScreen extends AbstractContainerScreen<ChefCounterMenu> 
     @Override
     protected void containerTick() {
         super.containerTick();
+        updatePinButton();
         if (!awaitingServerDetails) {
             return;
         }
@@ -307,7 +326,23 @@ public class ChefCounterScreen extends AbstractContainerScreen<ChefCounterMenu> 
             selectedRecipeId = null;
             pendingSelectedRecipeId = null;
             menu.clientState().clearDetails();
+            updatePinButton();
         }
+    }
+
+    private void updatePinButton() {
+        if (pinButton == null) {
+            return;
+        }
+        pinButton.active = selectedRecipeId != null && !awaitingServerDetails;
+        pinButton.setMessage(pinButtonLabel());
+    }
+
+    private Component pinButtonLabel() {
+        if (selectedRecipeId != null && menu.clientState().isPinned(selectedRecipeId)) {
+            return Component.translatable("gui.delightful_kitchen.chef_counter.button.unpin");
+        }
+        return Component.translatable("gui.delightful_kitchen.chef_counter.button.pin");
     }
 
     @Override

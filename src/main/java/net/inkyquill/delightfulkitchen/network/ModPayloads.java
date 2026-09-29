@@ -2,10 +2,12 @@ package net.inkyquill.delightfulkitchen.network;
 
 import net.inkyquill.delightfulkitchen.menu.ChefCounterMenu;
 import net.inkyquill.delightfulkitchen.item.FoodPouchItem;
+import net.inkyquill.delightfulkitchen.network.payload.ClientboundChefCounterBookmarksPayload;
 import net.inkyquill.delightfulkitchen.network.payload.ClientboundChefCounterDetailsPayload;
 import net.inkyquill.delightfulkitchen.network.payload.ClientboundChefCounterQueueResultPayload;
 import net.inkyquill.delightfulkitchen.network.payload.ClientboundChefCounterSyncPayload;
 import net.inkyquill.delightfulkitchen.network.payload.ServerboundChefCounterConfirmPayload;
+import net.inkyquill.delightfulkitchen.network.payload.ServerboundChefCounterPinPayload;
 import net.inkyquill.delightfulkitchen.network.payload.ServerboundChefCounterSelectPayload;
 import net.inkyquill.delightfulkitchen.network.payload.ServerboundOpenEquippedPouchPayload;
 import net.minecraft.server.level.ServerPlayer;
@@ -26,6 +28,8 @@ public final class ModPayloads {
         PayloadRegistrar registrar = event.registrar(NETWORK_VERSION);
         registrar.playToClient(ClientboundChefCounterSyncPayload.TYPE,
                         ClientboundChefCounterSyncPayload.STREAM_CODEC, ModPayloads::handleSync)
+                .playToClient(ClientboundChefCounterBookmarksPayload.TYPE,
+                        ClientboundChefCounterBookmarksPayload.STREAM_CODEC, ModPayloads::handleBookmarks)
                 .playToClient(ClientboundChefCounterDetailsPayload.TYPE,
                         ClientboundChefCounterDetailsPayload.STREAM_CODEC, ModPayloads::handleDetails)
                 .playToClient(ClientboundChefCounterQueueResultPayload.TYPE,
@@ -34,11 +38,17 @@ public final class ModPayloads {
                         ServerboundChefCounterSelectPayload.STREAM_CODEC, ModPayloads::handleSelect)
                 .playToServer(ServerboundChefCounterConfirmPayload.TYPE,
                         ServerboundChefCounterConfirmPayload.STREAM_CODEC, ModPayloads::handleConfirm)
+                .playToServer(ServerboundChefCounterPinPayload.TYPE,
+                        ServerboundChefCounterPinPayload.STREAM_CODEC, ModPayloads::handlePin)
                 .playToServer(ServerboundOpenEquippedPouchPayload.TYPE,
                         ServerboundOpenEquippedPouchPayload.STREAM_CODEC, ModPayloads::handleOpenEquippedPouch);
     }
 
     public static void sendToPlayer(ServerPlayer player, ClientboundChefCounterSyncPayload payload) {
+        PacketDistributor.sendToPlayer(player, payload);
+    }
+
+    public static void sendToPlayer(ServerPlayer player, ClientboundChefCounterBookmarksPayload payload) {
         PacketDistributor.sendToPlayer(player, payload);
     }
 
@@ -55,6 +65,10 @@ public final class ModPayloads {
     }
 
     public static void sendToServer(ServerboundChefCounterConfirmPayload payload) {
+        PacketDistributor.sendToServer(payload);
+    }
+
+    public static void sendToServer(ServerboundChefCounterPinPayload payload) {
         PacketDistributor.sendToServer(payload);
     }
 
@@ -76,6 +90,15 @@ public final class ModPayloads {
             ChefCounterMenu menu = matchingMenu(context.player(), payload.containerId());
             if (menu != null) {
                 menu.handleChefCounterDetails(payload);
+            }
+        });
+    }
+
+    private static void handleBookmarks(ClientboundChefCounterBookmarksPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            ChefCounterMenu menu = matchingMenu(context.player(), payload.containerId());
+            if (menu != null) {
+                menu.handleChefCounterBookmarks(payload);
             }
         });
     }
@@ -103,6 +126,15 @@ public final class ModPayloads {
             ChefCounterMenu menu = matchingMenu(context.player(), payload.containerId());
             if (menu != null) {
                 menu.handleChefCounterConfirm(payload);
+            }
+        });
+    }
+
+    private static void handlePin(ServerboundChefCounterPinPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            ChefCounterMenu menu = matchingMenu(context.player(), payload.containerId());
+            if (menu != null) {
+                menu.handleChefCounterPin(payload);
             }
         });
     }

@@ -175,6 +175,39 @@ class ChefCounterPayloadCodecTest {
     }
 
     @Test
+    void bookmarkSyncPayloadPreservesMenuAndOrderedRecipeIds() {
+        ClientboundChefCounterBookmarksPayload decoded = roundTrip(
+                ClientboundChefCounterBookmarksPayload.STREAM_CODEC,
+                new ClientboundChefCounterBookmarksPayload(16, List.of(id("recipe/first"), id("recipe/second")))
+        );
+
+        assertEquals(16, decoded.containerId());
+        assertEquals(List.of(id("recipe/first"), id("recipe/second")), decoded.pinnedRecipeIds());
+    }
+
+    @Test
+    void serverboundPinPayloadPreservesMenuRecipeAndPinnedState() {
+        ServerboundChefCounterPinPayload decoded = roundTrip(
+                ServerboundChefCounterPinPayload.STREAM_CODEC,
+                new ServerboundChefCounterPinPayload(17, id("recipe/stew"), true)
+        );
+
+        assertEquals(17, decoded.containerId());
+        assertEquals(id("recipe/stew"), decoded.recipeId());
+        assertTrue(decoded.pin());
+    }
+
+    @Test
+    void oversizedBookmarkListIsRejectedBeforeAllocation() {
+        RegistryFriendlyByteBuf buf = newBuffer();
+        buf.writeVarInt(18);
+        buf.writeVarInt(ClientboundChefCounterBookmarksPayload.MAX_PINNED_RECIPES + 1);
+
+        assertThrows(io.netty.handler.codec.DecoderException.class,
+                () -> ClientboundChefCounterBookmarksPayload.STREAM_CODEC.decode(buf));
+    }
+
+    @Test
     void oversizedSummaryListIsRejectedBeforeAllocation() {
         RegistryFriendlyByteBuf buf = newBuffer();
         buf.writeVarInt(ChefCounterPayloadCodecs.MAX_SUMMARIES + 1);

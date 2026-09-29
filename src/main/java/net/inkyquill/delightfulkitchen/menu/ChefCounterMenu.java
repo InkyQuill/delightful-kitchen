@@ -1,6 +1,7 @@
 package net.inkyquill.delightfulkitchen.menu;
 
 import net.inkyquill.delightfulkitchen.block.ModBlocks;
+import net.inkyquill.delightfulkitchen.bookmark.RecipeBookmarkStore;
 import net.inkyquill.delightfulkitchen.kitchen.KitchenInventoryService;
 import net.inkyquill.delightfulkitchen.kitchen.KitchenScanResult;
 import net.inkyquill.delightfulkitchen.kitchen.KitchenScanner;
@@ -15,10 +16,12 @@ import net.inkyquill.delightfulkitchen.menu.chef.ChefCounterServerSession;
 import net.inkyquill.delightfulkitchen.menu.chef.ChefCounterViewState;
 import net.inkyquill.delightfulkitchen.menu.chef.ChefQueueResultView;
 import net.inkyquill.delightfulkitchen.network.ModPayloads;
+import net.inkyquill.delightfulkitchen.network.payload.ClientboundChefCounterBookmarksPayload;
 import net.inkyquill.delightfulkitchen.network.payload.ClientboundChefCounterDetailsPayload;
 import net.inkyquill.delightfulkitchen.network.payload.ClientboundChefCounterQueueResultPayload;
 import net.inkyquill.delightfulkitchen.network.payload.ClientboundChefCounterSyncPayload;
 import net.inkyquill.delightfulkitchen.network.payload.ServerboundChefCounterConfirmPayload;
+import net.inkyquill.delightfulkitchen.network.payload.ServerboundChefCounterPinPayload;
 import net.inkyquill.delightfulkitchen.network.payload.ServerboundChefCounterSelectPayload;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
@@ -125,6 +128,10 @@ public class ChefCounterMenu extends AbstractContainerMenu {
         clientState.handleQueueResult(payload);
     }
 
+    public void handleChefCounterBookmarks(ClientboundChefCounterBookmarksPayload payload) {
+        clientState.handleBookmarks(payload);
+    }
+
     public void handleClientState(ChefCounterViewState state) {
         clientState.handleState(state);
     }
@@ -138,6 +145,12 @@ public class ChefCounterMenu extends AbstractContainerMenu {
     public void handleChefCounterConfirm(ServerboundChefCounterConfirmPayload payload) {
         if (owner instanceof ServerPlayer serverPlayer) {
             handleClientConfirm(serverPlayer, payload.selectedIndex(), payload.requestedQuantity(), payload.fingerprint());
+        }
+    }
+
+    public void handleChefCounterPin(ServerboundChefCounterPinPayload payload) {
+        if (owner instanceof ServerPlayer serverPlayer) {
+            handleClientPin(serverPlayer, payload.recipeId(), payload.pin());
         }
     }
 
@@ -161,6 +174,14 @@ public class ChefCounterMenu extends AbstractContainerMenu {
         ModPayloads.sendToPlayer(player, serverSession.queueResultPayload(containerId, confirmation));
         ModPayloads.sendToPlayer(player, serverSession.syncPayload(containerId));
         ModPayloads.sendToPlayer(player, detailsPayload(containerId, confirmation));
+    }
+
+    public void handleClientPin(ServerPlayer player, net.minecraft.resources.ResourceLocation recipeId, boolean pin) {
+        if (player.containerMenu != this) {
+            return;
+        }
+        RecipeBookmarkStore.INSTANCE.setPinned(player.getUUID(), recipeId, pin);
+        ModPayloads.sendToPlayer(player, bookmarksPayload(player));
     }
 
     static ClientboundChefCounterDetailsPayload detailsPayload(int containerId,
@@ -231,11 +252,17 @@ public class ChefCounterMenu extends AbstractContainerMenu {
                 quantity);
         copySessionData();
         ModPayloads.sendToPlayer(player, serverSession.syncPayload(containerId));
+        ModPayloads.sendToPlayer(player, bookmarksPayload(player));
         ModPayloads.sendToPlayer(player, detailsPayload);
         if (serverSession.floorCount() == 0) {
             ModPayloads.sendToPlayer(player, new ClientboundChefCounterQueueResultPayload(containerId,
                     ChefQueueResultView.blocked(PlanningBlocker.KITCHEN_CHANGED)));
         }
+    }
+
+    private ClientboundChefCounterBookmarksPayload bookmarksPayload(ServerPlayer player) {
+        return new ClientboundChefCounterBookmarksPayload(containerId,
+                RecipeBookmarkStore.INSTANCE.get(player.getUUID()));
     }
 
     private void copySessionData() {

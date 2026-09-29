@@ -2,8 +2,10 @@ package net.inkyquill.delightfulkitchen.menu.chef;
 
 import net.inkyquill.delightfulkitchen.kitchen.execution.KitchenPlanFingerprint;
 import net.inkyquill.delightfulkitchen.network.payload.ClientboundChefCounterDetailsPayload;
+import net.inkyquill.delightfulkitchen.network.payload.ClientboundChefCounterBookmarksPayload;
 import net.inkyquill.delightfulkitchen.network.payload.ClientboundChefCounterQueueResultPayload;
 import net.inkyquill.delightfulkitchen.network.payload.ClientboundChefCounterSyncPayload;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.List;
 import java.util.Objects;
@@ -15,6 +17,7 @@ public final class ChefCounterClientState {
     private List<ChefRecipeSummary> summaries = List.of();
     private Optional<ChefPlanDetails> details = Optional.empty();
     private Optional<ChefQueueResultView> queueResult = Optional.empty();
+    private List<ResourceLocation> pinnedRecipeIds = List.of();
 
     public List<ChefRecipeSummary> summaries() {
         return summaries;
@@ -26,6 +29,14 @@ public final class ChefCounterClientState {
 
     public Optional<ChefQueueResultView> queueResult() {
         return queueResult;
+    }
+
+    public List<ResourceLocation> pinnedRecipeIds() {
+        return pinnedRecipeIds;
+    }
+
+    public boolean isPinned(ResourceLocation recipeId) {
+        return pinnedRecipeIds.contains(recipeId);
     }
 
     public ChefCounterViewState viewState() {
@@ -41,6 +52,10 @@ public final class ChefCounterClientState {
 
     public void handleDetails(ClientboundChefCounterDetailsPayload payload) {
         details = Objects.requireNonNull(payload, "payload").details();
+    }
+
+    public void handleBookmarks(ClientboundChefCounterBookmarksPayload payload) {
+        pinnedRecipeIds = List.copyOf(Objects.requireNonNull(payload, "payload").pinnedRecipeIds());
     }
 
     public void clearDetails() {

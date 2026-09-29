@@ -40,6 +40,8 @@
   "gui.delightful_kitchen.chef_counter.button.waiting": "Waiting",
   "gui.delightful_kitchen.chef_counter.button.queued": "Queued",
   "gui.delightful_kitchen.chef_counter.button.blocked": "Blocked",
+  "gui.delightful_kitchen.chef_counter.button.pin": "Pin",
+  "gui.delightful_kitchen.chef_counter.button.unpin": "Unpin",
   "gui.delightful_kitchen.chef_counter.empty.no_kitchen": "No kitchen",
   "gui.delightful_kitchen.chef_counter.empty.no_recipes": "No recipes",
   "gui.delightful_kitchen.chef_counter.empty.no_search_match": "No matches",
